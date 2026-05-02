@@ -1,0 +1,54 @@
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# environment variables
+.env
+.env.*
+!.env.example
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# build outputs
+android/build/
+ios/build/
+
+# Xcode
+*.xcworkspace
+*.xcuserdata
+*.xcuserstate
+
+# Android
+*.keystore
+*.jks
+
+# IDEs
+.vscode/
+.idea/
+
+# TypeScript
+*.tsbuildinfo
+
+# Metro bundler
+.metro-health-check*
+
+# coverage
+coverage/
+
+# misc
+*.log
