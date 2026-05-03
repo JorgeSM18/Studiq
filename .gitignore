@@ -10,6 +10,8 @@ web-build/
 # environment variables
 .env
 .env.*
+.env*.local
+.expo.env*
 !.env.example
 
 # logs
@@ -22,11 +24,16 @@ pnpm-debug.log*
 .DS_Store
 
 # Windows
-Thumbs.db
+[Tt]humbs.db
+[Bb]ackup/
+ehthumbs.db
+Desktop.ini
 
 # build outputs
 android/build/
 ios/build/
+ios/
+android/
 
 # Xcode
 *.xcworkspace
