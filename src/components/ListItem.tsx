@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
+import { theme } from '../constants/theme';
 
 interface ListItemProps {
   title: string;
@@ -21,7 +22,7 @@ export const ListItem = ({ title, subtitle, onPress, rightElement, icon }: ListI
         </View>
       </View>
       <View style={styles.rightContent}>
-        {rightElement || <ChevronRight size={20} color="#9CA3AF" />}
+        {rightElement || <ChevronRight size={20} color={theme.colors.outline} />}
       </View>
     </TouchableOpacity>
   );
@@ -32,9 +33,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: theme.colors.separator,
   },
   leftContent: {
     flexDirection: 'row',
@@ -42,19 +43,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconContainer: {
-    marginRight: 12,
+    marginRight: theme.spacing.md,
   },
   title: {
-    fontSize: 16,
+    ...theme.typography.bodyLg,
     fontWeight: '500',
-    color: '#111827',
+    color: theme.colors.onSurface,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
+    ...theme.typography.bodySm,
+    color: theme.colors.onSurfaceVariant,
     marginTop: 2,
   },
   rightContent: {
-    marginLeft: 8,
+    marginLeft: theme.spacing.sm,
   }
 });

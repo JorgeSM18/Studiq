@@ -1,10 +1,12 @@
 import React from 'react';
+import { theme } from '../constants/theme';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
 import { Home, Book, Library, BarChart2 } from 'lucide-react-native';
 
 // Pantallas
+import { SplashScreen } from '../screens/SplashScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { TopicsScreen } from '../screens/TopicsScreen';
 import { TopicDetailScreen } from '../screens/TopicDetailScreen';
@@ -18,44 +20,47 @@ function TabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#4F46E5',
-        tabBarInactiveTintColor: '#9CA3AF',
-        headerShown: true,
-        headerStyle: {
-          backgroundColor: '#FFFFFF',
-          elevation: 0,
-          shadowOpacity: 0,
+        headerShown: false,
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.outline,
+        tabBarStyle: {
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.separator,
+          paddingBottom: 8,
+          paddingTop: 8,
+          height: 60,
         },
-        headerTitleStyle: {
-          fontWeight: '700',
-          fontSize: 20,
+        tabBarLabelStyle: {
+          ...theme.typography.labelCaps,
+          fontSize: 10,
+          marginTop: -4,
         },
       }}
     >
-      <Tab.Screen 
-        name="Hoy" 
-        component={HomeScreen} 
+      <Tab.Screen
+        name="Hoy"
+        component={HomeScreen}
         options={{
           tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
         }}
       />
-      <Tab.Screen 
-        name="Temas" 
-        component={TopicsScreen} 
+      <Tab.Screen
+        name="Temas"
+        component={TopicsScreen}
         options={{
           tabBarIcon: ({ color, size }) => <Book color={color} size={size} />,
         }}
       />
-      <Tab.Screen 
-        name="Biblioteca" 
-        component={LibraryScreen} 
+      <Tab.Screen
+        name="Biblioteca"
+        component={LibraryScreen}
         options={{
           tabBarIcon: ({ color, size }) => <Library color={color} size={size} />,
         }}
       />
-      <Tab.Screen 
-        name="Progreso" 
-        component={ProgressScreen} 
+      <Tab.Screen
+        name="Progreso"
+        component={ProgressScreen}
         options={{
           tabBarIcon: ({ color, size }) => <BarChart2 color={color} size={size} />,
         }}
@@ -68,20 +73,22 @@ export function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator
+        initialRouteName="Splash"
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: '#F9FAFB' },
         }}
       >
+        <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Main" component={TabNavigator} />
-        <Stack.Screen 
-          name="TopicDetail" 
-          component={TopicDetailScreen} 
-          options={{ 
-            headerShown: true, 
+        <Stack.Screen
+          name="TopicDetail"
+          component={TopicDetailScreen}
+          options={{
+            headerShown: true,
             title: 'Detalle del Tema',
             headerBackTitle: 'Atrás'
-          }} 
+          }}
         />
       </Stack.Navigator>
     </NavigationContainer>

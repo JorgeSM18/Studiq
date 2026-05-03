@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useStore } from '../store/useStore';
 import { Card } from '../components/Card';
 import { Flame, Target, Award } from 'lucide-react-native';
+import { theme } from '../constants/theme';
 
 export const ProgressScreen = () => {
   const { progress } = useStore();
@@ -19,13 +20,13 @@ export const ProgressScreen = () => {
 
       <View style={styles.statsGrid}>
         <Card style={styles.statCard}>
-          <Flame size={24} color="#EF4444" />
+          <Flame size={24} color={theme.colors.error} />
           <Text style={styles.statValue}>{progress.study_streak}</Text>
           <Text style={styles.statLabel}>Racha días</Text>
         </Card>
 
         <Card style={styles.statCard}>
-          <Award size={24} color="#F59E0B" />
+          <Award size={24} color={theme.colors.primaryContainer} />
           <Text style={styles.statValue}>{progress.mastered_topics}</Text>
           <Text style={styles.statLabel}>Temas dominados</Text>
         </Card>
@@ -33,7 +34,7 @@ export const ProgressScreen = () => {
 
       <Card style={styles.infoCard}>
         <View style={styles.infoRow}>
-          <Target size={20} color="#4F46E5" />
+          <Target size={20} color={theme.colors.primary} />
           <Text style={styles.infoText}>
             Has dominado {progress.mastered_topics} de {progress.total_topics} temas.
           </Text>
@@ -46,67 +47,66 @@ export const ProgressScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.background,
   },
   content: {
-    padding: 20,
+    padding: theme.spacing.lg,
   },
   mainCard: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: theme.spacing.xl,
   },
   percentageText: {
+    ...theme.typography.display,
     fontSize: 48,
-    fontWeight: '800',
-    color: '#4F46E5',
+    color: theme.colors.primary,
   },
   percentageLabel: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 4,
-    marginBottom: 20,
+    ...theme.typography.bodyLg,
+    color: theme.colors.onSurfaceVariant,
+    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.lg,
   },
   progressBarContainer: {
     width: '100%',
     height: 8,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
+    backgroundColor: theme.colors.separator,
+    borderRadius: theme.borderRadius.full,
     overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#4F46E5',
+    backgroundColor: theme.colors.primary,
   },
   statsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: theme.spacing.sm,
   },
   statCard: {
     flex: 0.48,
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 8,
+    ...theme.typography.h2,
+    color: theme.colors.onBackground,
+    marginTop: theme.spacing.sm,
   },
   statLabel: {
-    fontSize: 14,
-    color: '#6B7280',
+    ...theme.typography.bodySm,
+    color: theme.colors.onSurfaceVariant,
     marginTop: 2,
   },
   infoCard: {
-    marginTop: 8,
+    marginTop: theme.spacing.sm,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   infoText: {
-    fontSize: 15,
-    color: '#374151',
-    marginLeft: 12,
+    ...theme.typography.bodyLg,
+    color: theme.colors.onSurface,
+    marginLeft: theme.spacing.md,
   }
 });

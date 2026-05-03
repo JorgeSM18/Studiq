@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore';
 import { Card } from '../components/Card';
 import { ListItem } from '../components/ListItem';
 import { CheckCircle2, Circle } from 'lucide-react-native';
+import { theme } from '../constants/theme';
 
 export const HomeScreen = () => {
   const { todayTasks, isLoading, fetchInitialData, updateTask } = useStore();
@@ -15,9 +16,9 @@ export const HomeScreen = () => {
       onPress={() => updateTask(item.id, !item.completed)}
       rightElement={
         item.completed ? (
-          <CheckCircle2 size={24} color="#10B981" />
+          <CheckCircle2 size={24} color={theme.colors.success} />
         ) : (
-          <Circle size={24} color="#D1D5DB" />
+          <Circle size={24} color={theme.colors.outlineVariant} />
         )
       }
     />
@@ -36,7 +37,7 @@ export const HomeScreen = () => {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={isLoading} onRefresh={fetchInitialData} />
+          <RefreshControl refreshing={isLoading} onRefresh={fetchInitialData} tintColor={theme.colors.primary} />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -51,30 +52,29 @@ export const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.background,
   },
   header: {
-    padding: 20,
+    padding: theme.spacing.lg,
   },
   greeting: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#111827',
+    ...theme.typography.h1,
+    color: theme.colors.onBackground,
   },
   summary: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 4,
+    ...theme.typography.bodyLg,
+    color: theme.colors.onSurfaceVariant,
+    marginTop: theme.spacing.xs,
   },
   list: {
-    padding: 20,
+    paddingHorizontal: theme.spacing.lg,
   },
   emptyContainer: {
     alignItems: 'center',
-    marginTop: 40,
+    marginTop: theme.spacing.xxl,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#9CA3AF',
+    ...theme.typography.bodyLg,
+    color: theme.colors.outline,
   }
 });

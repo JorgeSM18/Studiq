@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native
 import { useStore } from '../store/useStore';
 import { ListItem } from '../components/ListItem';
 import { useNavigation } from '@react-navigation/native';
+import { theme } from '../constants/theme';
 
 export const TopicsScreen = () => {
   const { topics, isLoading } = useStore();
@@ -10,9 +11,9 @@ export const TopicsScreen = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'mastered': return '#10B981';
-      case 'in_progress': return '#F59E0B';
-      default: return '#9CA3AF';
+      case 'mastered': return theme.colors.success;
+      case 'in_progress': return '#F59E0B'; // Podríamos añadirlo al tema
+      default: return theme.colors.outline;
     }
   };
 
@@ -54,18 +55,18 @@ export const TopicsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.background,
   },
   list: {
-    padding: 20,
+    paddingHorizontal: theme.spacing.lg,
   },
   statusBadge: {
-    paddingHorizontal: 10,
+    paddingHorizontal: theme.spacing.sm,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: theme.borderRadius.sm,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...theme.typography.labelCaps,
+    fontSize: 10,
   }
 });

@@ -1,5 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { theme } from '../constants/theme';
 
 interface ButtonProps {
   title: string;
@@ -29,6 +30,7 @@ export const Button = ({
   const getTextStyle = () => {
     switch (variant) {
       case 'outline': return styles.outlineText;
+      case 'secondary': return styles.secondaryText;
       default: return styles.buttonText;
     }
   };
@@ -49,29 +51,34 @@ const styles = StyleSheet.create({
   button: {
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 12,
+    borderRadius: theme.borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primary: {
-    backgroundColor: '#4F46E5', // Indigo
+    backgroundColor: theme.colors.primary,
   },
   secondary: {
-    backgroundColor: '#F3F4F6', // Gray 100
+    backgroundColor: theme.colors.softWash,
   },
   outline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: theme.colors.outlineVariant,
   },
   buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: theme.colors.onPrimary,
+    ...theme.typography.bodyLg,
+    fontWeight: '600',
+  },
+  secondaryText: {
+    color: theme.colors.primary,
+    ...theme.typography.bodyLg,
     fontWeight: '600',
   },
   outlineText: {
-    color: '#374151',
-    fontSize: 16,
+    color: theme.colors.onSurfaceVariant,
+    ...theme.typography.bodyLg,
     fontWeight: '600',
   },
   disabled: {
