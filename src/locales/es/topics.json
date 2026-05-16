@@ -1,0 +1,14 @@
+{
+  "topicsTitle": "Temas",
+  "createTopic": "Añadir tema",
+  "noTopics": "Aún no hay temas",
+  "noTopicsDesc": "Añade tu primer tema para comenzar a estructurar tu estudio.",
+  "status": "Estado",
+  "mastered": "Dominado",
+  "inProgress": "En progreso",
+  "notStarted": "Sin empezar",
+  "topicName": "Nombre del tema",
+  "topicNamePlaceholder": "ej. Tema 1: Constitución",
+  "pdfUrl": "Enlace al PDF",
+  "pdfUrlPlaceholder": "https://..."
+}

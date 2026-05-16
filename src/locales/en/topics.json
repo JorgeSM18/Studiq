@@ -1,0 +1,14 @@
+{
+  "topicsTitle": "Topics",
+  "createTopic": "Add Topic",
+  "noTopics": "No topics yet",
+  "noTopicsDesc": "Add your first topic to start structuring your study.",
+  "status": "Status",
+  "mastered": "Mastered",
+  "inProgress": "In progress",
+  "notStarted": "Not started",
+  "topicName": "Topic Name",
+  "topicNamePlaceholder": "e.g. Topic 1: Constitution",
+  "pdfUrl": "PDF Link",
+  "pdfUrlPlaceholder": "https://..."
+}

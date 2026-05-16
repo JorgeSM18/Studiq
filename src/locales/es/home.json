@@ -1,0 +1,10 @@
+{
+  "greeting": "Hola",
+  "todayPlan": "Plan de hoy",
+  "progress": "Progreso",
+  "completedSessions": "Sesiones completadas",
+  "pendingTasks": "Tareas pendientes",
+  "quickActions": "Acciones rápidas",
+  "noTasks": "Todo listo para hoy",
+  "startStudy": "Iniciar sesión de estudio"
+}

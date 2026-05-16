@@ -1,0 +1,18 @@
+{
+  "profileTitle": "Perfil",
+  "editProfile": "Editar perfil",
+  "preferences": "Preferencias",
+  "notifications": "Notificaciones",
+  "darkMode": "Modo oscuro",
+  "biometricLogin": "Acceso biométrico",
+  "changePassword": "Cambiar contraseña",
+  "language": "Idioma",
+  "logout": "Cerrar sesión",
+  "academicDetails": "Detalles Académicos",
+  "studyFocus": "Foco de estudio",
+  "targetExamDate": "Fecha de examen objetivo",
+  "studyReminders": "Recordatorios de estudio",
+  "logoutConfirmTitle": "Cerrar sesión",
+  "logoutConfirmMessage": "¿Estás seguro de que deseas cerrar sesión?",
+  "logoutError": "Error al cerrar sesión"
+}
