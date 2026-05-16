@@ -1,12 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Image, Animated, Dimensions } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../constants/theme';
 
 const { width } = Dimensions.get('window');
 
 export const SplashScreen = () => {
-  const navigation = useNavigation<any>();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
 
@@ -24,13 +23,6 @@ export const SplashScreen = () => {
       duration: 5000,
       useNativeDriver: false,
     }).start();
-
-    // Navegación después de 5 segundos
-    const timer = setTimeout(() => {
-      navigation.replace('Main');
-    }, 5000);
-
-    return () => clearTimeout(timer);
   }, []);
 
   const progressWidth = progressAnim.interpolate({
@@ -39,12 +31,12 @@ export const SplashScreen = () => {
   });
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
         {/* Logo Card */}
         <View style={styles.logoCard}>
-          <Image 
-            source={require('../../assets/studiq_logo.png')} 
+          <Image
+            source={require('../../assets/studiq_logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -52,7 +44,7 @@ export const SplashScreen = () => {
 
         {/* Text */}
         <Text style={styles.title}>Studiq</Text>
-        <Text style={styles.tagline}>Focus on what matters.</Text>
+        <Text style={styles.tagline}>Céntrate en lo que importa</Text>
       </Animated.View>
 
       {/* Footer Loading */}
@@ -60,9 +52,9 @@ export const SplashScreen = () => {
         <View style={styles.progressContainer}>
           <Animated.View style={[styles.progressBar, { width: progressWidth }]} />
         </View>
-        <Text style={styles.loadingText}>MASTERY LOADING</Text>
+        <Text style={styles.loadingText}>CARGANDO</Text>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 

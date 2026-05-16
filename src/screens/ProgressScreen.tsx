@@ -1,46 +1,50 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../store/useStore';
 import { Card } from '../components/Card';
 import { Flame, Target, Award } from 'lucide-react-native';
 import { theme } from '../constants/theme';
 
 export const ProgressScreen = () => {
-  const { progress } = useStore();
+  const { progress, subjects, activeSubjectId } = useStore();
+  const activeSubject = subjects.find(s => s.id === activeSubjectId);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Card style={styles.mainCard}>
-        <Text style={styles.percentageText}>{progress.percentage_completed}%</Text>
-        <Text style={styles.percentageLabel}>Progreso Total</Text>
-        <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBar, { width: `${progress.percentage_completed}%` }]} />
-        </View>
-      </Card>
-
-      <View style={styles.statsGrid}>
-        <Card style={styles.statCard}>
-          <Flame size={24} color={theme.colors.error} />
-          <Text style={styles.statValue}>{progress.study_streak}</Text>
-          <Text style={styles.statLabel}>Racha días</Text>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Card style={styles.mainCard}>
+          <Text style={styles.percentageText}>{progress.percentage_completed}%</Text>
+          <Text style={styles.percentageLabel}>Progreso en {activeSubject?.name || 'Asignatura'}</Text>
+          <View style={styles.progressBarContainer}>
+            <View style={[styles.progressBar, { width: `${progress.percentage_completed}%` }]} />
+          </View>
         </Card>
 
-        <Card style={styles.statCard}>
-          <Award size={24} color={theme.colors.primaryContainer} />
-          <Text style={styles.statValue}>{progress.mastered_topics}</Text>
-          <Text style={styles.statLabel}>Temas dominados</Text>
-        </Card>
-      </View>
+        <View style={styles.statsGrid}>
+          <Card style={styles.statCard}>
+            <Flame size={24} color={theme.colors.error} />
+            <Text style={styles.statValue}>{progress.study_streak}</Text>
+            <Text style={styles.statLabel}>Racha días</Text>
+          </Card>
 
-      <Card style={styles.infoCard}>
-        <View style={styles.infoRow}>
-          <Target size={20} color={theme.colors.primary} />
-          <Text style={styles.infoText}>
-            Has dominado {progress.mastered_topics} de {progress.total_topics} temas.
-          </Text>
+          <Card style={styles.statCard}>
+            <Award size={24} color={theme.colors.primaryContainer} />
+            <Text style={styles.statValue}>{progress.mastered_topics}</Text>
+            <Text style={styles.statLabel}>Temas dominados</Text>
+          </Card>
         </View>
-      </Card>
-    </ScrollView>
+
+        <Card style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Target size={20} color={theme.colors.primary} />
+            <Text style={styles.infoText}>
+              Has dominado {progress.mastered_topics} de {progress.total_topics} temas.
+            </Text>
+          </View>
+        </Card>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 

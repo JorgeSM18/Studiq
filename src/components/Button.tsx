@@ -11,13 +11,13 @@ interface ButtonProps {
   disabled?: boolean;
 }
 
-export const Button = ({ 
-  title, 
-  onPress, 
-  variant = 'primary', 
-  style, 
+export const Button = ({
+  title,
+  onPress,
+  variant = 'primary',
+  style,
   textStyle,
-  disabled 
+  disabled
 }: ButtonProps) => {
   const getButtonStyle = () => {
     switch (variant) {
@@ -36,8 +36,8 @@ export const Button = ({
   };
 
   return (
-    <TouchableOpacity 
-      style={[styles.button, getButtonStyle(), style, disabled && styles.disabled]} 
+    <TouchableOpacity
+      style={[styles.button, getButtonStyle(), style, disabled && styles.disabled]}
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.7}
@@ -49,8 +49,8 @@ export const Button = ({
 
 const styles = StyleSheet.create({
   button: {
-    paddingVertical: 14,
-    paddingHorizontal: 24,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     borderRadius: theme.borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',

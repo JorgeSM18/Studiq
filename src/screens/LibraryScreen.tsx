@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../store/useStore';
 import { ListItem } from '../components/ListItem';
 import { FileText } from 'lucide-react-native';
+import { theme } from '../constants/theme';
 
 export const LibraryScreen = () => {
   const { topics } = useStore();
@@ -13,12 +15,12 @@ export const LibraryScreen = () => {
       title={item.title}
       subtitle="PDF Document"
       onPress={() => console.log('Abrir PDF:', item.pdf_url)}
-      icon={<FileText size={20} color="#4F46E5" />}
+      icon={<FileText size={20} color={theme.colors.primary} />}
     />
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <FlatList
         data={materials}
         renderItem={renderMaterial}
@@ -30,24 +32,24 @@ export const LibraryScreen = () => {
           </View>
         }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.colors.background,
   },
   list: {
-    padding: 20,
+    padding: theme.spacing.lg,
   },
   emptyContainer: {
     alignItems: 'center',
-    marginTop: 40,
+    marginTop: theme.spacing.xxl,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#9CA3AF',
+    ...theme.typography.bodyLg,
+    color: theme.colors.outline,
   }
 });

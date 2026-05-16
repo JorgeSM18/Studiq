@@ -1,13 +1,28 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../store/useStore';
-import { Card } from '../components/Card';
 import { ListItem } from '../components/ListItem';
-import { CheckCircle2, Circle } from 'lucide-react-native';
+import { CheckCircle2, Circle, Info } from 'lucide-react-native';
 import { theme } from '../constants/theme';
 
 export const HomeScreen = () => {
-  const { todayTasks, isLoading, fetchInitialData, updateTask } = useStore();
+  const { 
+    todayTasks, 
+    topics, 
+    profile, 
+    subjects, 
+    activeSubjectId, 
+    isLoading, 
+    fetchInitialData, 
+    updateTask 
+  } = useStore();
+  const activeSubject = subjects.find(s => s.id === activeSubjectId);
+  const hasMaterials = topics.some(t => t.pdf_url);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
 
   const renderTask = ({ item }: { item: any }) => (
     <ListItem
@@ -25,11 +40,28 @@ export const HomeScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <Text style={styles.greeting}>Hola, Jorge</Text>
-        <Text style={styles.summary}>Tienes {todayTasks.filter(t => !t.completed).length} tareas para hoy.</Text>
+        <Text style={styles.greeting}>Hola, {profile?.full_name || 'Estudiante'}</Text>
+        <Text style={styles.summary}>
+          {activeSubject ? `${activeSubject.name}: ` : ''}
+          Tienes {todayTasks.filter(t => !t.completed).length} tareas para hoy.
+        </Text>
       </View>
+
+      {!hasMaterials && (
+        <View style={styles.noticeWrapper}>
+          <View style={styles.noticeCard}>
+            <View style={styles.noticeHeader}>
+              <Info size={20} color={theme.colors.primary} />
+              <Text style={styles.noticeTitle}>Próximo Paso: Biblioteca</Text>
+            </View>
+            <Text style={styles.noticeText}>
+              Para generar tu plan de estudio inteligente, recuerda subir tus temarios y documentos en la sección de Biblioteca.
+            </Text>
+          </View>
+        </View>
+      )}
 
       <FlatList
         data={todayTasks}
@@ -45,7 +77,7 @@ export const HomeScreen = () => {
           </View>
         }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -76,5 +108,31 @@ const styles = StyleSheet.create({
   emptyText: {
     ...theme.typography.bodyLg,
     color: theme.colors.outline,
-  }
+  },
+  noticeWrapper: {
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+  },
+  noticeCard: {
+    backgroundColor: '#EEF2FF',
+    padding: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.separator,
+  },
+  noticeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  noticeTitle: {
+    ...theme.typography.bodyLg,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
+    marginLeft: theme.spacing.xs,
+  },
+  noticeText: {
+    ...theme.typography.bodyLg,
+    color: theme.colors.primary,
+  },
 });
