@@ -1,86 +1,168 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
-import { useRoute } from '@react-navigation/native';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Alert,
+  Linking,
+} from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
+import * as DocumentPicker from 'expo-document-picker';
+import { FileText, Paperclip, ExternalLink, Trash2, CheckCircle2 } from 'lucide-react-native';
 import { useStore } from '../store/useStore';
 import { supabaseService } from '../services/supabaseService';
 import { Button } from '../components/Button';
-import { FileText } from 'lucide-react-native';
+import { theme } from '../constants/theme';
+
+// Stored path is {uid}/{topicId}/{filename}; show just the filename.
+const fileNameOf = (path: string) => path.split('/').pop() || path;
 
 export const TopicDetailScreen = () => {
   const route = useRoute<any>();
+  const navigation = useNavigation<any>();
+  const { t } = useTranslation(['topics', 'common']);
   const { topicId } = route.params;
-  const { topics, updateTopicStatus } = useStore();
-  const topic = topics.find(t => t.id === topicId);
-  
+
+  const topic = useStore(state => state.topics.find(t => t.id === topicId));
+  const updateTopicStatus = useStore(state => state.updateTopicStatus);
+  const attachFile = useStore(state => state.attachFile);
+  const removeFile = useStore(state => state.removeFile);
+
   const [noteContent, setNoteContent] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
+
+  useLayoutEffect(() => {
+    if (topic) navigation.setOptions({ title: topic.title });
+  }, [navigation, topic?.title]);
 
   useEffect(() => {
-    loadNote();
+    supabaseService
+      .getNoteByTopicId(topicId)
+      .then(note => note && setNoteContent(note.content ?? ''))
+      .catch(err => console.error('Error loading note:', err));
   }, [topicId]);
 
-  const loadNote = async () => {
-    try {
-      const note = await supabaseService.getNoteByTopicId(topicId);
-      if (note) setNoteContent(note.content);
-    } catch (error) {
-      console.error('Error loading note:', error);
-    }
-  };
-
-  const handleSaveNote = async () => {
-    setIsSaving(true);
-    try {
-      await supabaseService.saveNote(topicId, noteContent);
-    } catch (error) {
-      console.error('Error saving note:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
+  // Topic can briefly be undefined right after its own deletion unmounts this
+  // screen; render nothing rather than crash on the missing row.
   if (!topic) return null;
 
+  const handleSaveNote = () => {
+    supabaseService.saveNote(topicId, noteContent).catch(err => console.error('Error saving note:', err));
+  };
+
+  const handleAttach = async () => {
+    const result = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+
+    setIsUploading(true);
+    try {
+      await attachFile(topicId, { uri: asset.uri, name: asset.name, mimeType: asset.mimeType });
+    } catch {
+      Alert.alert(t('common:error'), t('topics:uploadError'));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleOpen = async () => {
+    if (!topic.pdf_url) return;
+    setIsOpening(true);
+    try {
+      const url = await supabaseService.getFileUrl(topic.pdf_url);
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert(t('common:error'), t('topics:openError'));
+    } finally {
+      setIsOpening(false);
+    }
+  };
+
+  const handleRemove = () => {
+    Alert.alert(t('topics:removeFile'), t('topics:removeFileConfirm'), [
+      { text: t('common:cancel'), style: 'cancel' },
+      {
+        text: t('common:delete'),
+        style: 'destructive',
+        onPress: () => removeFile(topicId).catch(err => console.error('Error removing file:', err)),
+      },
+    ]);
+  };
+
+  const isMastered = topic.status === 'mastered';
+
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
+    <KeyboardAvoidingView
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={100}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>{topic.title}</Text>
-        
-        {/* PDF Placeholder */}
-        <View style={styles.pdfCard}>
-          <FileText size={48} color="#4F46E5" />
-          <Text style={styles.pdfText}>Material de estudio (PDF)</Text>
-          <Button 
-            title="Abrir PDF" 
-            variant="outline" 
-            onPress={() => console.log('Abrir PDF:', topic.pdf_url)} 
-            style={styles.pdfButton}
-          />
-        </View>
+        {/* Study material */}
+        <Text style={styles.sectionTitle}>{t('topics:material')}</Text>
+        {topic.pdf_url ? (
+          <View style={styles.materialCard}>
+            <FileText size={28} color={theme.colors.primary} />
+            <Text style={styles.fileName} numberOfLines={1}>{fileNameOf(topic.pdf_url)}</Text>
+            <View style={styles.materialActions}>
+              <TouchableOpacity style={styles.openButton} onPress={handleOpen} disabled={isOpening}>
+                {isOpening ? (
+                  <ActivityIndicator size="small" color={theme.colors.onPrimary} />
+                ) : (
+                  <>
+                    <ExternalLink size={18} color={theme.colors.onPrimary} />
+                    <Text style={styles.openButtonText}>{t('topics:openFile')}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.iconButton} onPress={handleRemove}>
+                <Trash2 size={20} color={theme.colors.error} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.attachCard} onPress={handleAttach} disabled={isUploading}>
+            {isUploading ? (
+              <>
+                <ActivityIndicator color={theme.colors.primary} />
+                <Text style={styles.attachText}>{t('topics:uploading')}</Text>
+              </>
+            ) : (
+              <>
+                <Paperclip size={24} color={theme.colors.primary} />
+                <Text style={styles.attachText}>{t('topics:attachFile')}</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
 
-        {/* Notes Section */}
-        <View style={styles.notesSection}>
-          <Text style={styles.sectionTitle}>Tus Notas</Text>
-          <TextInput
-            style={styles.noteInput}
-            multiline
-            placeholder="Escribe tus notas aquí..."
-            value={noteContent}
-            onChangeText={setNoteContent}
-            onBlur={handleSaveNote}
-          />
-        </View>
+        {/* Notes */}
+        <Text style={[styles.sectionTitle, styles.notesLabel]}>{t('topics:notes')}</Text>
+        <TextInput
+          style={styles.noteInput}
+          multiline
+          placeholder={t('topics:notesPlaceholder')}
+          placeholderTextColor={theme.colors.outlineVariant}
+          value={noteContent}
+          onChangeText={setNoteContent}
+          onBlur={handleSaveNote}
+          textAlignVertical="top"
+        />
 
-        <Button 
-          title={topic.status === 'mastered' ? "Tema Dominado" : "Marcar como Dominado"} 
+        <Button
+          title={isMastered ? t('topics:masteredDone') : t('topics:markMastered')}
           onPress={() => updateTopicStatus(topicId, 'mastered')}
-          variant={topic.status === 'mastered' ? "secondary" : "primary"}
-          disabled={topic.status === 'mastered'}
-          style={styles.completeButton}
+          variant={isMastered ? 'secondary' : 'primary'}
+          disabled={isMastered}
+          style={styles.masterButton}
         />
       </ScrollView>
     </KeyboardAvoidingView>
@@ -90,55 +172,89 @@ export const TopicDetailScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.background,
   },
   scrollContent: {
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 20,
-  },
-  pdfCard: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 16,
-    padding: 30,
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  pdfText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#374151',
-    marginTop: 12,
-  },
-  pdfButton: {
-    marginTop: 16,
-    width: '100%',
-  },
-  notesSection: {
-    marginBottom: 24,
+    padding: theme.spacing.lg,
   },
   sectionTitle: {
-    fontSize: 18,
+    ...theme.typography.labelCaps,
+    color: theme.colors.onSurfaceVariant,
+    marginBottom: theme.spacing.sm,
+  },
+  notesLabel: {
+    marginTop: theme.spacing.xl,
+  },
+  materialCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    alignItems: 'center',
+    ...theme.shadows.level1,
+  },
+  fileName: {
+    ...theme.typography.bodyLg,
+    fontWeight: '500',
+    color: theme.colors.onSurface,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+    maxWidth: '100%',
+  },
+  materialActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  openButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.lg,
+    height: 44,
+    borderRadius: theme.borderRadius.full,
+  },
+  openButtonText: {
+    ...theme.typography.bodyLg,
     fontWeight: '600',
-    color: '#111827',
-    marginBottom: 12,
+    color: theme.colors.onPrimary,
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.surfaceContainerLow,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  attachCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.outlineVariant,
+    borderStyle: 'dashed',
+    paddingVertical: theme.spacing.xl,
+  },
+  attachText: {
+    ...theme.typography.bodyLg,
+    fontWeight: '600',
+    color: theme.colors.primary,
   },
   noteInput: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
     minHeight: 150,
-    fontSize: 16,
-    color: '#374151',
-    textAlignVertical: 'top',
+    ...theme.typography.bodyLg,
+    color: theme.colors.onSurface,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: theme.colors.separator,
   },
-  completeButton: {
-    marginTop: 10,
-  }
+  masterButton: {
+    marginTop: theme.spacing.xl,
+  },
 });

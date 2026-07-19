@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Image, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../constants/theme';
 
-const { width } = Dimensions.get('window');
-
 export const SplashScreen = () => {
+  const { t } = useTranslation('common');
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
 
@@ -44,7 +44,7 @@ export const SplashScreen = () => {
 
         {/* Text */}
         <Text style={styles.title}>Studiq</Text>
-        <Text style={styles.tagline}>Céntrate en lo que importa</Text>
+        <Text style={styles.tagline}>{t('tagline')}</Text>
       </Animated.View>
 
       {/* Footer Loading */}
@@ -52,7 +52,7 @@ export const SplashScreen = () => {
         <View style={styles.progressContainer}>
           <Animated.View style={[styles.progressBar, { width: progressWidth }]} />
         </View>
-        <Text style={styles.loadingText}>CARGANDO</Text>
+        <Text style={styles.loadingText}>{t('loading')}</Text>
       </View>
     </SafeAreaView>
   );

@@ -1,49 +1,112 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { supabaseService } from '../services/supabaseService';
-import { LogOut, Globe, User, Bell, Shield, ChevronRight } from 'lucide-react-native';
+import { LogOut, Globe, Shield, ChevronRight, Pencil } from 'lucide-react-native';
 
 export const ProfileScreen = () => {
   const { t } = useTranslation(['profile', 'common']);
-  const { language, setLanguage, profile, setSession } = useStore();
+  const language = useStore(state => state.language);
+  const setLanguage = useStore(state => state.setLanguage);
+  const profile = useStore(state => state.profile);
+  const setSession = useStore(state => state.setSession);
+  const updateProfileName = useStore(state => state.updateProfileName);
 
-  const handleLanguageToggle = () => {
-    const newLang = language === 'es' ? 'en' : 'es';
-    setLanguage(newLang);
+  const [isEditing, setIsEditing] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+
+  const handleLanguageToggle = () => setLanguage(language === 'es' ? 'en' : 'es');
+
+  const openEditName = () => {
+    setNameDraft(profile?.full_name || '');
+    setIsEditing(true);
+  };
+
+  const saveName = async () => {
+    const name = nameDraft.trim();
+    setIsEditing(false);
+    if (!name || name === profile?.full_name) return;
+    try {
+      await updateProfileName(name);
+    } catch {
+      Alert.alert(t('common:error'), t('common:retry'));
+    }
+  };
+
+  const openChangePassword = () => {
+    setNewPassword('');
+    setConfirmPassword('');
+    setIsChangingPassword(true);
+  };
+
+  const saveNewPassword = async () => {
+    if (newPassword.length < 6) {
+      Alert.alert(t('common:error'), t('profile:passwordTooShort'));
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert(t('common:error'), t('profile:passwordsDontMatch'));
+      return;
+    }
+    setIsSavingPassword(true);
+    try {
+      await supabaseService.changePassword(newPassword);
+      setIsChangingPassword(false);
+      Alert.alert(t('profile:passwordChanged'));
+    } catch (error: any) {
+      Alert.alert(t('common:error'), error.message);
+    } finally {
+      setIsSavingPassword(false);
+    }
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      t('profile:logoutConfirmTitle'),
-      t('profile:logoutConfirmMessage'),
-      [
-        { text: t('common:cancel'), style: 'cancel' },
-        { 
-          text: t('profile:logout'), 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await supabaseService.signOut();
-              setSession(null);
-            } catch (error) {
-              Alert.alert(t('common:error'), t('profile:logoutError'));
-            }
+    Alert.alert(t('profile:logoutConfirmTitle'), t('profile:logoutConfirmMessage'), [
+      { text: t('common:cancel'), style: 'cancel' },
+      {
+        text: t('profile:logout'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await supabaseService.signOut();
+            setSession(null);
+          } catch {
+            Alert.alert(t('common:error'), t('profile:logoutError'));
           }
-        }
-      ]
-    );
+        },
+      },
+    ]);
   };
 
-  const renderSettingItem = (icon: React.ReactNode, title: string, value?: string, onPress?: () => void) => (
+  const renderSettingItem = (
+    icon: React.ReactNode,
+    title: string,
+    value?: string,
+    onPress?: () => void
+  ) => (
     <TouchableOpacity style={styles.settingItem} onPress={onPress} disabled={!onPress}>
       <View style={styles.settingLeft}>
-        <View style={styles.iconContainer}>
-          {icon}
-        </View>
+        <View style={styles.iconContainer}>{icon}</View>
         <Text style={styles.settingTitle}>{title}</Text>
       </View>
       <View style={styles.settingRight}>
@@ -60,57 +123,129 @@ export const ProfileScreen = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        
-        {/* User Info Card */}
-        <View style={styles.userCard}>
+        {/* User card */}
+        <TouchableOpacity style={styles.userCard} onPress={openEditName} activeOpacity={0.7}>
           <View style={styles.avatarPlaceholder}>
             <Text style={styles.avatarText}>
               {profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : 'U'}
             </Text>
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{profile?.full_name || 'Usuario'}</Text>
-            <TouchableOpacity>
-              <Text style={styles.editProfileText}>{t('profile:editProfile')}</Text>
-            </TouchableOpacity>
+            <Text style={styles.userName}>{profile?.full_name || t('profile:namePlaceholder')}</Text>
+            <View style={styles.editRow}>
+              <Pencil size={14} color={theme.colors.primary} />
+              <Text style={styles.editProfileText}>{t('profile:editName')}</Text>
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
 
-        {/* Preferences Section */}
+        {/* Preferences */}
         <Text style={styles.sectionTitle}>{t('profile:preferences')}</Text>
         <View style={styles.sectionGroup}>
           {renderSettingItem(
-            <Globe size={20} color={theme.colors.primary} />, 
-            t('profile:language'), 
+            <Globe size={20} color={theme.colors.primary} />,
+            t('profile:language'),
             language === 'es' ? 'Español' : 'English',
             handleLanguageToggle
           )}
-          {renderSettingItem(
-            <Bell size={20} color={theme.colors.primary} />, 
-            t('profile:notifications')
-          )}
         </View>
 
-        {/* Security Section */}
-        <Text style={styles.sectionTitle}>Seguridad</Text>
+        {/* Security */}
+        <Text style={styles.sectionTitle}>{t('profile:security')}</Text>
         <View style={styles.sectionGroup}>
           {renderSettingItem(
-            <Shield size={20} color={theme.colors.primary} />, 
-            t('profile:changePassword')
-          )}
-          {renderSettingItem(
-            <User size={20} color={theme.colors.primary} />, 
-            t('profile:biometricLogin')
+            <Shield size={20} color={theme.colors.primary} />,
+            t('profile:changePassword'),
+            undefined,
+            openChangePassword
           )}
         </View>
 
-        {/* Logout Button */}
+        {/* Logout */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <LogOut size={20} color={theme.colors.error} style={styles.logoutIcon} />
           <Text style={styles.logoutText}>{t('profile:logout')}</Text>
         </TouchableOpacity>
-
       </ScrollView>
+
+      {/* Edit-name modal */}
+      <Modal visible={isEditing} transparent animationType="fade" onRequestClose={() => setIsEditing(false)}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t('profile:editName')}</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={nameDraft}
+              onChangeText={setNameDraft}
+              placeholder={t('profile:namePlaceholder')}
+              placeholderTextColor={theme.colors.outlineVariant}
+              autoFocus
+              autoCapitalize="words"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalButton} onPress={() => setIsEditing(false)}>
+                <Text style={styles.modalCancel}>{t('common:cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalButton, styles.modalSave]} onPress={saveName}>
+                <Text style={styles.modalSaveText}>{t('common:save')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Change-password modal */}
+      <Modal
+        visible={isChangingPassword}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsChangingPassword(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t('profile:changePassword')}</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              placeholder={t('profile:newPasswordPlaceholder')}
+              placeholderTextColor={theme.colors.outlineVariant}
+              secureTextEntry
+              autoFocus
+            />
+            <TextInput
+              style={styles.modalInput}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder={t('profile:confirmPasswordPlaceholder')}
+              placeholderTextColor={theme.colors.outlineVariant}
+              secureTextEntry
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalButton} onPress={() => setIsChangingPassword(false)}>
+                <Text style={styles.modalCancel}>{t('common:cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalSave]}
+                onPress={saveNewPassword}
+                disabled={isSavingPassword}
+              >
+                {isSavingPassword ? (
+                  <ActivityIndicator size="small" color={theme.colors.onPrimary} />
+                ) : (
+                  <Text style={styles.modalSaveText}>{t('common:save')}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -162,6 +297,11 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurface,
     marginBottom: 4,
   },
+  editRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   editProfileText: {
     ...theme.typography.bodySm,
     color: theme.colors.primary,
@@ -186,8 +326,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.separator,
   },
   settingLeft: {
     flexDirection: 'row',
@@ -231,5 +369,55 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyLg,
     fontWeight: '600',
     color: theme.colors.error,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    padding: theme.spacing.xl,
+  },
+  modalCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+  },
+  modalTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.md,
+  },
+  modalInput: {
+    backgroundColor: theme.colors.surfaceContainerLow,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: theme.spacing.md,
+    height: 52,
+    ...theme.typography.bodyLg,
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.lg,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: theme.spacing.sm,
+  },
+  modalButton: {
+    paddingHorizontal: theme.spacing.lg,
+    height: 44,
+    borderRadius: theme.borderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalSave: {
+    backgroundColor: theme.colors.primary,
+  },
+  modalCancel: {
+    ...theme.typography.bodyLg,
+    fontWeight: '600',
+    color: theme.colors.onSurfaceVariant,
+  },
+  modalSaveText: {
+    ...theme.typography.bodyLg,
+    fontWeight: '600',
+    color: theme.colors.onPrimary,
   },
 });

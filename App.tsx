@@ -1,17 +1,12 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppNavigator } from './src/navigation/AppNavigator';
-import { useStore } from './src/store/useStore';
 import './src/lib/i18n';
 
+// Data loads when HomeScreen mounts (i.e. once a session exists), which also
+// avoids fetching here at cold start before auth has been restored.
 export default function App() {
-  const fetchInitialData = useStore(state => state.fetchInitialData);
-
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
-
   return (
     <SafeAreaProvider>
       <AppNavigator />

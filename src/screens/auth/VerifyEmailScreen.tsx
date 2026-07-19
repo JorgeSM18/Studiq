@@ -82,10 +82,7 @@ export const VerifyEmailScreen = () => {
       if (data.user?.email_confirmed_at) {
         await initializeAuth();
       } else {
-        Alert.alert(
-          t('common:error'),
-          'Tu correo aún no ha sido verificado. Revisa tu bandeja de entrada.',
-        );
+        Alert.alert(t('common:error'), t('auth:notVerifiedYet'));
       }
     } catch {
       Alert.alert(t('common:error'), t('auth:resendEmailError'));
@@ -130,7 +127,7 @@ export const VerifyEmailScreen = () => {
           {isCheckingVerification ? (
             <ActivityIndicator color={theme.colors.onPrimary} />
           ) : (
-            <Text style={styles.primaryButtonText}>Ya lo verifiqué →</Text>
+            <Text style={styles.primaryButtonText}>{t('auth:verifiedButton')}</Text>
           )}
         </TouchableOpacity>
 

@@ -40,12 +40,21 @@ export const RegisterScreen = () => {
       Alert.alert(t('common:error'), t('auth:fillAllFields'));
       return;
     }
-    
+    if (password.length < 6) {
+      Alert.alert(t('common:error'), t('auth:passwordTooShort'));
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await supabaseService.signUp(email, password, fullName, studyType, examDate);
-      // Navegar a la pantalla de verificación pasando el email
-      navigation.navigate('VerifyEmail', { email });
+      const data = await supabaseService.signUp(email, password, fullName, studyType, examDate);
+      // With email confirmation off, signUp returns an active session — go
+      // straight in. With it on, there's no session yet, so verify by email.
+      if (data.session) {
+        await initializeAuth();
+      } else {
+        navigation.navigate('VerifyEmail', { email });
+      }
     } catch (error: any) {
       Alert.alert(t('auth:registerError'), error.message);
     } finally {
