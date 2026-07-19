@@ -1,10 +1,18 @@
 {
-  "greeting": "Hola",
+  "greetingNamed": "Hola, {{name}}",
+  "student": "Estudiante",
   "todayPlan": "Plan de hoy",
-  "progress": "Progreso",
-  "completedSessions": "Sesiones completadas",
-  "pendingTasks": "Tareas pendientes",
-  "quickActions": "Acciones rápidas",
-  "noTasks": "Todo listo para hoy",
-  "startStudy": "Iniciar sesión de estudio"
+  "todayCount_one": "{{count}} tema para estudiar hoy.",
+  "todayCount_other": "{{count}} temas para estudiar hoy.",
+  "allStudiedToday": "Has estudiado todo lo previsto para hoy.",
+  "reviewLabel": "Repaso",
+  "newTopicLabel": "Tema nuevo",
+  "allMastered": "Todo dominado. ¡Buen trabajo!",
+  "doneForToday": "Plan de hoy completado. ¡Nos vemos mañana!",
+  "noTopicsTitle": "Aún no hay temas",
+  "noTopicsDesc": "Añade tu temario en la pestaña Temas para crear tu plan diario.",
+  "daysToExam_one": "{{count}} día para tu examen",
+  "daysToExam_other": "{{count}} días para tu examen",
+  "examToday": "Tu examen es hoy",
+  "examPast": "La fecha del examen ya pasó"
 }
