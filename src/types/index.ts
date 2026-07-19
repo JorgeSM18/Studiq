@@ -5,28 +5,15 @@ export interface Topic {
   user_id: string;
   subject_id: string;
   title: string;
-  order: number;
-  pdf_url?: string;
+  description: string | null;
+  order_index: number;
+  pdf_url: string | null;
   status: TopicStatus;
-  // SRS Fields
-  last_review_date?: string;
-  next_review_date?: string;
-  review_interval?: number;
-  ease_factor?: number;
-  created_at: string;
-}
-
-export type TaskType = 'topic' | 'review';
-
-export interface StudyTask {
-  id: string;
-  user_id: string;
-  subject_id: string; // Added for performance
-  topic_id: string;
-  topic_title: string;
-  date: string;
-  type: TaskType;
-  completed: boolean;
+  // Unused until spaced repetition lands; the columns already exist.
+  last_review_date: string | null;
+  next_review_date: string | null;
+  review_interval: number | null;
+  ease_factor: number | null;
   created_at: string;
 }
 
@@ -56,6 +43,6 @@ export interface Subject {
   id: string;
   user_id: string;
   name: string;
-  exam_date: string;
+  exam_date: string | null; // nullable in the DB; the countdown must handle it
   created_at: string;
 }

@@ -1,44 +1,60 @@
 import { create } from 'zustand';
-import { Topic, StudyTask, UserProgress, Profile, Subject } from '../types';
+import { Topic, UserProgress, Profile, Subject } from '../types';
 import { supabaseService } from '../services/supabaseService';
 import { supabase } from '../lib/supabase';
+import { todayISO, computeStreak } from '../utils/streak';
+import { scheduleReview } from '../utils/plan';
 
 import { Session } from '@supabase/supabase-js';
-import * as LocalAuthentication from 'expo-local-authentication';
 import i18n from '../lib/i18n';
 
 interface AppState {
   session: Session | null;
-  isBiometricEnabled: boolean;
   language: string;
   subjects: Subject[];
   activeSubjectId: string | null;
   topics: Topic[];
-  todayTasks: StudyTask[];
+  studiedTodayIds: string[];
+  studyDates: string[]; // distinct dates with activity, for the streak (no refetch on toggle)
   progress: UserProgress;
   profile: Profile | null;
   isLoading: boolean;
   isAuthLoading: boolean;
-  
+
   // Actions
   setSession: (session: Session | null) => void;
-  setBiometricEnabled: (enabled: boolean) => void;
   setLanguage: (lang: string) => void;
   initializeAuth: () => Promise<void>;
   fetchInitialData: () => Promise<void>;
   setActiveSubject: (id: string) => Promise<void>;
-  updateTask: (id: string, completed: boolean) => Promise<void>;
+  toggleStudiedToday: (topicId: string) => Promise<void>;
   updateTopicStatus: (id: string, status: Topic['status']) => Promise<void>;
+  addTopics: (titles: string[]) => Promise<void>;
+  deleteTopic: (id: string) => Promise<void>;
+  attachFile: (topicId: string, file: { uri: string; name: string; mimeType?: string }) => Promise<void>;
+  removeFile: (topicId: string) => Promise<void>;
+  updateProfileName: (fullName: string) => Promise<void>;
+}
+
+// The mastered count and percentage are derived from topics in several actions;
+// keeping the arithmetic in one place stops the three copies from drifting.
+function topicProgress(topics: Topic[]) {
+  const mastered = topics.filter(t => t.status === 'mastered').length;
+  return {
+    total_topics: topics.length,
+    mastered_topics: mastered,
+    percentage_completed: topics.length ? Math.round((mastered / topics.length) * 100) : 0,
+  };
 }
 
 export const useStore = create<AppState>((set, get) => ({
   session: null,
-  isBiometricEnabled: false,
   language: i18n.language || 'es', // Default to i18n detected language
   subjects: [],
   activeSubjectId: null,
   topics: [],
-  todayTasks: [],
+  studiedTodayIds: [],
+  studyDates: [],
   progress: {
     percentage_completed: 0,
     study_streak: 0,
@@ -50,7 +66,6 @@ export const useStore = create<AppState>((set, get) => ({
   isAuthLoading: true,
 
   setSession: (session) => set({ session }),
-  setBiometricEnabled: (enabled) => set({ isBiometricEnabled: enabled }),
   setLanguage: (lang) => {
     i18n.changeLanguage(lang);
     set({ language: lang });
@@ -107,32 +122,24 @@ export const useStore = create<AppState>((set, get) => ({
       // Seleccionar la primera asignatura por defecto si no hay una activa
       const activeId = get().activeSubjectId || (subjects.length > 0 ? subjects[0].id : null);
 
-      let topics: Topic[] = [];
-      let tasks: StudyTask[] = [];
+      const today = todayISO();
+      const [topics, studiedTodayIds, studyDates] = await Promise.all([
+        activeId ? supabaseService.getTopics(activeId) : Promise.resolve([]),
+        supabaseService.getStudiedOn(today),
+        supabaseService.getStudyDates(),
+      ]);
 
-      if (activeId) {
-        const [fetchedTopics, fetchedTasks] = await Promise.all([
-          supabaseService.getTopics(activeId),
-          supabaseService.getTodayTasks(activeId)
-        ]);
-        topics = fetchedTopics;
-        tasks = fetchedTasks;
-      }
-
-      const masteredCount = topics.filter(t => t.status === 'mastered').length;
-      const percentage = topics.length > 0 ? (masteredCount / topics.length) * 100 : 0;
-
-      set({ 
+      set({
         subjects,
         activeSubjectId: activeId,
-        topics, 
-        todayTasks: tasks,
+        topics,
+        studiedTodayIds,
+        studyDates,
         profile,
         progress: {
           ...get().progress,
-          total_topics: topics.length,
-          mastered_topics: masteredCount,
-          percentage_completed: Math.round(percentage)
+          ...topicProgress(topics),
+          study_streak: computeStreak(studyDates, today),
         }
       });
     } catch (error) {
@@ -145,24 +152,8 @@ export const useStore = create<AppState>((set, get) => ({
   setActiveSubject: async (id: string) => {
     set({ activeSubjectId: id, isLoading: true });
     try {
-      const [topics, tasks] = await Promise.all([
-        supabaseService.getTopics(id),
-        supabaseService.getTodayTasks(id)
-      ]);
-
-      const masteredCount = topics.filter(t => t.status === 'mastered').length;
-      const percentage = topics.length > 0 ? (masteredCount / topics.length) * 100 : 0;
-
-      set({
-        topics,
-        todayTasks: tasks,
-        progress: {
-          ...get().progress,
-          total_topics: topics.length,
-          mastered_topics: masteredCount,
-          percentage_completed: Math.round(percentage)
-        }
-      });
+      const topics = await supabaseService.getTopics(id);
+      set({ topics, progress: { ...get().progress, ...topicProgress(topics) } });
     } catch (error) {
       console.error('Error switching subject:', error);
     } finally {
@@ -170,34 +161,125 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  updateTask: async (id: string, completed: boolean) => {
+  // Toggles "studied today" for a topic and recomputes the streak locally.
+  // Marking a fresh topic also nudges it not_started -> in_progress; unmarking
+  // never downgrades status, since "I didn't study it today" isn't "I never did".
+  toggleStudiedToday: async (topicId: string) => {
+    const today = todayISO();
+    const topic = get().topics.find(t => t.id === topicId);
+    if (!topic) return;
+    const wasStudied = get().studiedTodayIds.includes(topicId);
+
+    // Work out how this study event moves the topic's schedule/status, so the
+    // optimistic update and the persisted writes stay in lockstep.
+    const introducedToday =
+      topic.status === 'in_progress' && topic.review_interval === 2 && topic.last_review_date === today;
+
+    let patch: Partial<Topic> | null = null;
+    if (wasStudied) {
+      // Undo: only a topic *introduced* today can be cleanly reverted to new;
+      // an undone review keeps its schedule (we don't store the prior date).
+      if (introducedToday) {
+        patch = { status: 'not_started', last_review_date: null, next_review_date: null, review_interval: 1 };
+      }
+    } else if (topic.last_review_date !== today) {
+      // Fresh study today: advance the spaced-review schedule, never past the exam.
+      const examDate = get().subjects.find(s => s.id === get().activeSubjectId)?.exam_date ?? null;
+      const { interval, nextReviewDate } = scheduleReview(today, topic.review_interval, examDate);
+      patch = {
+        last_review_date: today,
+        next_review_date: nextReviewDate,
+        review_interval: interval,
+        ...(topic.status === 'not_started' ? { status: 'in_progress' as const } : {}),
+      };
+    }
+    // else: re-marking a topic already studied today — log only, schedule stays.
+
+    const studiedTodayIds = wasStudied
+      ? get().studiedTodayIds.filter(id => id !== topicId)
+      : [...get().studiedTodayIds, topicId];
+    const topics = patch
+      ? get().topics.map(t => (t.id === topicId ? { ...t, ...patch } : t))
+      : get().topics;
+
+    // Update the streak locally: today counts once any topic is studied, so add
+    // it when marking and drop it only when the last one for today is unmarked.
+    const stillStudiedToday = studiedTodayIds.length > 0;
+    const studyDates = stillStudiedToday
+      ? Array.from(new Set([today, ...get().studyDates]))
+      : get().studyDates.filter(d => d !== today);
+
+    set({
+      studiedTodayIds,
+      topics,
+      studyDates,
+      progress: {
+        ...get().progress,
+        ...topicProgress(topics),
+        study_streak: computeStreak(studyDates, today),
+      },
+    });
+
     try {
-      await supabaseService.toggleTaskCompletion(id, completed);
-      set(state => ({
-        todayTasks: state.todayTasks.map(t => t.id === id ? { ...t, completed } : t)
-      }));
+      if (wasStudied) await supabaseService.unmarkStudied(topicId, today);
+      else await supabaseService.markStudied(topicId, today);
+      if (patch) await supabaseService.updateTopicSchedule(topicId, patch);
     } catch (error) {
-      console.error('Error updating task:', error);
+      console.error('Error toggling studied:', error);
+      get().fetchInitialData(); // pull authoritative state back after a failed write
     }
   },
 
   updateTopicStatus: async (id: string, status: Topic['status']) => {
     try {
       await supabaseService.updateTopicStatus(id, status);
-      const updatedTopics = get().topics.map(t => t.id === id ? { ...t, status } : t);
-      const masteredCount = updatedTopics.filter(t => t.status === 'mastered').length;
-      const percentage = updatedTopics.length > 0 ? (masteredCount / updatedTopics.length) * 100 : 0;
-
-      set({ 
-        topics: updatedTopics,
-        progress: {
-          ...get().progress,
-          mastered_topics: masteredCount,
-          percentage_completed: Math.round(percentage)
-        }
-      });
+      const topics = get().topics.map(t => t.id === id ? { ...t, status } : t);
+      set({ topics, progress: { ...get().progress, ...topicProgress(topics) } });
     } catch (error) {
       console.error('Error updating topic:', error);
     }
+  },
+
+  addTopics: async (titles: string[]) => {
+    const subjectId = get().activeSubjectId;
+    if (!subjectId || titles.length === 0) return;
+    // Let the screen catch and surface failures, so the user knows nothing saved
+    // rather than seeing an empty list and assuming it worked.
+    const created = await supabaseService.createTopics(subjectId, titles);
+    const topics = [...get().topics, ...created];
+    set({ topics, progress: { ...get().progress, ...topicProgress(topics) } });
+  },
+
+  deleteTopic: async (id: string) => {
+    try {
+      const filePath = get().topics.find(t => t.id === id)?.pdf_url;
+      await supabaseService.deleteTopic(id, filePath);
+      const topics = get().topics.filter(t => t.id !== id);
+      set({ topics, progress: { ...get().progress, ...topicProgress(topics) } });
+    } catch (error) {
+      console.error('Error deleting topic:', error);
+    }
+  },
+
+  // Both rethrow so the detail screen can surface the failure; a silent catch
+  // would leave the user thinking a large upload succeeded when it didn't.
+  attachFile: async (topicId, file) => {
+    const current = get().topics.find(t => t.id === topicId)?.pdf_url;
+    const path = await supabaseService.uploadTopicFile(topicId, file, current);
+    set({ topics: get().topics.map(t => (t.id === topicId ? { ...t, pdf_url: path } : t)) });
+  },
+
+  removeFile: async (topicId) => {
+    const path = get().topics.find(t => t.id === topicId)?.pdf_url;
+    if (!path) return;
+    await supabaseService.removeTopicFile(topicId, path);
+    set({ topics: get().topics.map(t => (t.id === topicId ? { ...t, pdf_url: null } : t)) });
+  },
+
+  updateProfileName: async (fullName) => {
+    await supabaseService.updateProfile(fullName);
+    set(state => ({
+      profile: state.profile ? { ...state.profile, full_name: fullName } : state.profile,
+    }));
   }
 }));
