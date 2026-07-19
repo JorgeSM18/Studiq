@@ -1,0 +1,39 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zoelnjexiakjtdcunurx.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvZWxuamV4aWFranRkY3VudXJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MzE4MTEsImV4cCI6MjA5MzMwNzgxMX0.70zF6ABYHC5WnNeMPkPUvyVLWm3XB9KMCvpklA2dOYY"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zoelnjexiakjtdcunurx.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvZWxuamV4aWFranRkY3VudXJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MzE4MTEsImV4cCI6MjA5MzMwNzgxMX0.70zF6ABYHC5WnNeMPkPUvyVLWm3XB9KMCvpklA2dOYY"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zoelnjexiakjtdcunurx.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvZWxuamV4aWFranRkY3VudXJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MzE4MTEsImV4cCI6MjA5MzMwNzgxMX0.70zF6ABYHC5WnNeMPkPUvyVLWm3XB9KMCvpklA2dOYY"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
