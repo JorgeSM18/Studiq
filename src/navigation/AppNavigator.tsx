@@ -18,18 +18,20 @@ import { SplashScreen } from '../screens/SplashScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { TopicsScreen } from '../screens/TopicsScreen';
 import { TopicDetailScreen } from '../screens/TopicDetailScreen';
+import { BulkAddTopicsScreen } from '../screens/BulkAddTopicsScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
 import { ProgressScreen } from '../screens/ProgressScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 
 import { useStore } from '../store/useStore';
+import { supabase } from '../lib/supabase';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 function TabNavigator() {
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation(['common', 'home', 'topics', 'profile']);
+  const { t } = useTranslation(['common', 'home', 'topics', 'profile', 'progress']);
   
   return (
     <Tab.Navigator
@@ -71,6 +73,7 @@ function TabNavigator() {
         name="Biblioteca"
         component={LibraryScreen}
         options={{
+          tabBarLabel: t('topics:libraryTitle'),
           tabBarIcon: ({ color, size }) => <Library color={color} size={size} />,
         }}
       />
@@ -78,6 +81,7 @@ function TabNavigator() {
         name="Progreso"
         component={ProgressScreen}
         options={{
+          tabBarLabel: t('progress:progressTab'),
           tabBarIcon: ({ color, size }) => <BarChart2 color={color} size={size} />,
         }}
       />
@@ -94,12 +98,23 @@ function TabNavigator() {
 }
 
 export function AppNavigator() {
-  const { session, isAuthLoading, initializeAuth } = useStore();
+  const session = useStore(state => state.session);
+  const isAuthLoading = useStore(state => state.isAuthLoading);
+  const initializeAuth = useStore(state => state.initializeAuth);
+  const setSession = useStore(state => state.setSession);
   const { t } = useTranslation('common');
 
   React.useEffect(() => {
     initializeAuth();
-  }, [initializeAuth]);
+
+    // React to sign-out, token refresh and, crucially, token-refresh failure
+    // (fires SIGNED_OUT), so an expired session routes back to the login stack
+    // instead of stranding the user on authenticated screens.
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+    });
+    return () => data.subscription.unsubscribe();
+  }, [initializeAuth, setSession]);
 
   if (isAuthLoading) {
     return <SplashScreen />;
@@ -125,6 +140,11 @@ export function AppNavigator() {
                 title: t('topics:topicName', { defaultValue: 'Topic' }),
                 headerBackTitle: t('back')
               }}
+            />
+            <Stack.Screen
+              name="BulkAddTopics"
+              component={BulkAddTopicsScreen}
+              options={{ presentation: 'modal' }}
             />
           </>
         ) : (

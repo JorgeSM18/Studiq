@@ -1,79 +1,111 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
+import { CheckCircle2, Circle, CalendarClock } from 'lucide-react-native';
 import { useStore } from '../store/useStore';
 import { ListItem } from '../components/ListItem';
-import { CheckCircle2, Circle, Info } from 'lucide-react-native';
 import { theme } from '../constants/theme';
+import { Topic } from '../types';
+import { buildDailyPlan, isReview, daysUntil } from '../utils/plan';
 
 export const HomeScreen = () => {
-  const { 
-    todayTasks, 
-    topics, 
-    profile, 
-    subjects, 
-    activeSubjectId, 
-    isLoading, 
-    fetchInitialData, 
-    updateTask 
-  } = useStore();
+  // Per-field selectors so Home only re-renders when its own slices change, not
+  // on every unrelated store update.
+  const topics = useStore(state => state.topics);
+  const studiedTodayIds = useStore(state => state.studiedTodayIds);
+  const profile = useStore(state => state.profile);
+  const subjects = useStore(state => state.subjects);
+  const activeSubjectId = useStore(state => state.activeSubjectId);
+  const isLoading = useStore(state => state.isLoading);
+  const fetchInitialData = useStore(state => state.fetchInitialData);
+  const toggleStudiedToday = useStore(state => state.toggleStudiedToday);
+  const navigation = useNavigation<any>();
+  const { t } = useTranslation(['home', 'topics']);
+
   const activeSubject = subjects.find(s => s.id === activeSubjectId);
-  const hasMaterials = topics.some(t => t.pdf_url);
+  const plan = buildDailyPlan(topics, studiedTodayIds, activeSubject?.exam_date ?? null);
+  const pending = plan.filter(topic => !studiedTodayIds.includes(topic.id)).length;
 
   useEffect(() => {
     fetchInitialData();
   }, []);
 
-  const renderTask = ({ item }: { item: any }) => (
-    <ListItem
-      title={item.topic_title}
-      subtitle={item.type === 'review' ? 'Repaso' : 'Nuevo tema'}
-      onPress={() => updateTask(item.id, !item.completed)}
-      rightElement={
-        item.completed ? (
-          <CheckCircle2 size={24} color={theme.colors.success} />
-        ) : (
-          <Circle size={24} color={theme.colors.outlineVariant} />
-        )
-      }
-    />
-  );
+  const examLabel = (): string | null => {
+    if (!activeSubject?.exam_date) return null;
+    const days = daysUntil(activeSubject.exam_date);
+    if (days < 0) return t('home:examPast');
+    if (days === 0) return t('home:examToday');
+    return t('home:daysToExam', { count: days });
+  };
+
+  const renderTopic = ({ item }: { item: Topic }) => {
+    const studied = studiedTodayIds.includes(item.id);
+    return (
+      <ListItem
+        title={item.title}
+        subtitle={isReview(item) ? t('home:reviewLabel') : t('home:newTopicLabel')}
+        onPress={() => navigation.navigate('TopicDetail', { topicId: item.id })}
+        rightElement={
+          <TouchableOpacity
+            onPress={() => toggleStudiedToday(item.id)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            {studied ? (
+              <CheckCircle2 size={26} color={theme.colors.success} />
+            ) : (
+              <Circle size={26} color={theme.colors.outlineVariant} />
+            )}
+          </TouchableOpacity>
+        }
+      />
+    );
+  };
+
+  const subtitle =
+    plan.length === 0
+      ? null
+      : pending === 0
+        ? t('home:allStudiedToday')
+        : t('home:todayCount', { count: pending });
+
+  const exam = examLabel();
+  const allMastered = topics.length > 0 && topics.every(t => t.status === 'mastered');
+  const emptyTitle =
+    topics.length === 0
+      ? t('home:noTopicsTitle')
+      : allMastered
+        ? t('home:allMastered')
+        : t('home:doneForToday');
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <Text style={styles.greeting}>Hola, {profile?.full_name || 'Estudiante'}</Text>
-        <Text style={styles.summary}>
-          {activeSubject ? `${activeSubject.name}: ` : ''}
-          Tienes {todayTasks.filter(t => !t.completed).length} tareas para hoy.
+        <Text style={styles.greeting}>
+          {t('home:greetingNamed', { name: profile?.full_name || t('home:student') })}
         </Text>
+        {subtitle && <Text style={styles.summary}>{subtitle}</Text>}
+        {exam && (
+          <View style={styles.examPill}>
+            <CalendarClock size={16} color={theme.colors.primary} />
+            <Text style={styles.examText}>{exam}</Text>
+          </View>
+        )}
       </View>
 
-      {!hasMaterials && (
-        <View style={styles.noticeWrapper}>
-          <View style={styles.noticeCard}>
-            <View style={styles.noticeHeader}>
-              <Info size={20} color={theme.colors.primary} />
-              <Text style={styles.noticeTitle}>Próximo Paso: Biblioteca</Text>
-            </View>
-            <Text style={styles.noticeText}>
-              Para generar tu plan de estudio inteligente, recuerda subir tus temarios y documentos en la sección de Biblioteca.
-            </Text>
-          </View>
-        </View>
-      )}
-
       <FlatList
-        data={todayTasks}
-        renderItem={renderTask}
+        data={plan}
+        renderItem={renderTopic}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl refreshing={isLoading} onRefresh={fetchInitialData} tintColor={theme.colors.primary} />
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>¡Todo listo por hoy!</Text>
+          <View style={styles.empty}>
+            <Text style={styles.emptyTitle}>{emptyTitle}</Text>
+            {topics.length === 0 && <Text style={styles.emptyDesc}>{t('home:noTopicsDesc')}</Text>}
           </View>
         }
       />
@@ -98,41 +130,42 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurfaceVariant,
     marginTop: theme.spacing.xs,
   },
-  list: {
-    paddingHorizontal: theme.spacing.lg,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: theme.spacing.xxl,
-  },
-  emptyText: {
-    ...theme.typography.bodyLg,
-    color: theme.colors.outline,
-  },
-  noticeWrapper: {
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
-  },
-  noticeCard: {
-    backgroundColor: '#EEF2FF',
-    padding: theme.spacing.lg,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.separator,
-  },
-  noticeHeader: {
+  examPill: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: theme.colors.surfaceContainerLow,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 6,
+    borderRadius: theme.borderRadius.full,
+    marginTop: theme.spacing.md,
+  },
+  examText: {
+    ...theme.typography.bodySm,
+    fontWeight: '600',
+    color: theme.colors.primary,
+  },
+  list: {
+    paddingHorizontal: theme.spacing.lg,
+    flexGrow: 1,
+  },
+  empty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.xxl,
+  },
+  emptyTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.onBackground,
     marginBottom: theme.spacing.sm,
+    textAlign: 'center',
   },
-  noticeTitle: {
+  emptyDesc: {
     ...theme.typography.bodyLg,
-    fontWeight: 'bold',
-    color: theme.colors.primary,
-    marginLeft: theme.spacing.xs,
-  },
-  noticeText: {
-    ...theme.typography.bodyLg,
-    color: theme.colors.primary,
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
   },
 });

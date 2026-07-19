@@ -1,34 +1,58 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, FlatList, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useStore } from '../store/useStore';
-import { ListItem } from '../components/ListItem';
+import { useTranslation } from 'react-i18next';
 import { FileText } from 'lucide-react-native';
+import { useStore } from '../store/useStore';
+import { supabaseService } from '../services/supabaseService';
+import { ListItem } from '../components/ListItem';
 import { theme } from '../constants/theme';
+import { Topic } from '../types';
+
+const fileNameOf = (path: string) => path.split('/').pop() || path;
 
 export const LibraryScreen = () => {
-  const { topics } = useStore();
-  const materials = topics.filter(t => t.pdf_url);
+  const { t } = useTranslation(['topics', 'common']);
+  const topics = useStore(state => state.topics);
+  const materials = topics.filter(topic => topic.pdf_url);
+  const [openingId, setOpeningId] = useState<string | null>(null);
 
-  const renderMaterial = ({ item }: { item: any }) => (
+  const handleOpen = async (topic: Topic) => {
+    if (!topic.pdf_url || openingId) return;
+    setOpeningId(topic.id);
+    try {
+      const url = await supabaseService.getFileUrl(topic.pdf_url);
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert(t('common:error'), t('topics:openError'));
+    } finally {
+      setOpeningId(null);
+    }
+  };
+
+  const renderMaterial = ({ item }: { item: Topic }) => (
     <ListItem
       title={item.title}
-      subtitle="PDF Document"
-      onPress={() => console.log('Abrir PDF:', item.pdf_url)}
+      subtitle={item.pdf_url ? fileNameOf(item.pdf_url) : undefined}
+      onPress={() => handleOpen(item)}
       icon={<FileText size={20} color={theme.colors.primary} />}
     />
   );
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>{t('topics:libraryTitle')}</Text>
+      </View>
       <FlatList
         data={materials}
         renderItem={renderMaterial}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No hay materiales disponibles.</Text>
+          <View style={styles.empty}>
+            <Text style={styles.emptyTitle}>{t('topics:noMaterials')}</Text>
+            <Text style={styles.emptyDesc}>{t('topics:noMaterialsDesc')}</Text>
           </View>
         }
       />
@@ -41,15 +65,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
+  header: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+  },
+  headerTitle: {
+    ...theme.typography.h1,
+    color: theme.colors.onBackground,
+  },
   list: {
-    padding: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
+    flexGrow: 1,
   },
-  emptyContainer: {
+  empty: {
+    flex: 1,
     alignItems: 'center',
-    marginTop: theme.spacing.xxl,
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.xxl,
   },
-  emptyText: {
+  emptyTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.onBackground,
+    marginBottom: theme.spacing.sm,
+  },
+  emptyDesc: {
     ...theme.typography.bodyLg,
-    color: theme.colors.outline,
-  }
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+  },
 });

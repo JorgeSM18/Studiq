@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../constants/theme';
 import { supabaseService } from '../../services/supabaseService';
-import { Lock, Mail, ScanFace, Eye, EyeOff } from 'lucide-react-native';
+import { Lock, Mail, Eye, EyeOff } from 'lucide-react-native';
 import { useStore } from '../../store/useStore';
 
 export const WelcomeScreen = () => {
@@ -47,16 +47,18 @@ export const WelcomeScreen = () => {
     }
   };
 
-  const handleBiometricLogin = async () => {
-    setIsLoading(true);
-    try {
-      await supabaseService.biometricLogin();
-      await initializeAuth();
-    } catch (error: any) {
-      Alert.alert(t('common:error'), error.message);
-    } finally {
-      setIsLoading(false);
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert(t('auth:forgotPassword'), t('auth:enterEmailFirst'));
+      return;
     }
+    try {
+      await supabaseService.resetPassword(email);
+    } catch {
+      // Swallowed on purpose: the confirmation is intentionally the same whether
+      // or not the email exists, so an attacker can't probe for accounts.
+    }
+    Alert.alert(t('auth:resetSentTitle'), t('auth:resetSentMessage'));
   };
 
   return (
@@ -102,7 +104,7 @@ export const WelcomeScreen = () => {
             <View style={styles.inputGroup}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>{t('auth:passwordLabel')}</Text>
-                <TouchableOpacity style={styles.forgotButton}>
+                <TouchableOpacity style={styles.forgotButton} onPress={handleForgotPassword}>
                   <Text style={styles.forgotText}>{t('auth:forgotPassword')}</Text>
                 </TouchableOpacity>
               </View>
@@ -141,20 +143,6 @@ export const WelcomeScreen = () => {
               )}
             </TouchableOpacity>
 
-            <View style={styles.dividerContainer}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>{t('auth:or')}</Text>
-              <View style={styles.divider} />
-            </View>
-
-            <TouchableOpacity 
-              style={styles.secondaryButton} 
-              onPress={handleBiometricLogin}
-              disabled={isLoading}
-            >
-              <ScanFace size={20} color={theme.colors.primary} style={styles.buttonIcon} />
-              <Text style={styles.secondaryButtonText}>{t('auth:biometricLogin')}</Text>
-            </TouchableOpacity>
           </View>
 
           <View style={[styles.footer, { marginTop: 'auto', paddingTop: 20 }]}>
@@ -262,37 +250,6 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyLg,
     fontWeight: '600',
     color: theme.colors.onPrimary,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: theme.colors.outlineVariant,
-  },
-  dividerText: {
-    ...theme.typography.bodySm,
-    color: theme.colors.outline,
-    paddingHorizontal: 16,
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.surface,
-    height: 56,
-    borderRadius: theme.borderRadius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonIcon: {
-    marginRight: 8,
-  },
-  secondaryButtonText: {
-    ...theme.typography.bodyLg,
-    fontWeight: '600',
-    color: theme.colors.primary,
   },
   footer: {
     flexDirection: 'row',

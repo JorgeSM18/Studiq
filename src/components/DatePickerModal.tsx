@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { theme } from '../constants/theme';
@@ -33,11 +33,13 @@ interface DatePickerModalProps {
 type ViewMode = 'calendar' | 'years' | 'months';
 
 export const DatePickerModal = ({ visible, onClose, onSelect, selectedDate }: DatePickerModalProps) => {
-  const { language } = useStore();
+  const language = useStore(state => state.language);
   const { t } = useTranslation(['common', 'auth']);
-  
-  // Set locale based on state
-  LocaleConfig.defaultLocale = language;
+
+  // Mutating the shared LocaleConfig is a side effect; keep it out of render.
+  useEffect(() => {
+    LocaleConfig.defaultLocale = language;
+  }, [language]);
 
   const [currentMonth, setCurrentMonth] = useState(selectedDate || new Date().toISOString().split('T')[0]);
   const [viewMode, setViewMode] = useState<ViewMode>('calendar');
@@ -48,7 +50,7 @@ export const DatePickerModal = ({ visible, onClose, onSelect, selectedDate }: Da
     return Array.from({ length: 11 }, (_, i) => currentYear + i);
   }, []);
 
-  const months = LocaleConfig.locales['es'].monthNames;
+  const months = (LocaleConfig.locales[language] ?? LocaleConfig.locales['es']).monthNames;
 
   const handleYearSelect = (year: number) => {
     setTempYear(year);
@@ -170,7 +172,7 @@ export const DatePickerModal = ({ visible, onClose, onSelect, selectedDate }: Da
                   <ChevronLeft size={24} color={theme.colors.primary} />
                 </TouchableOpacity>
                 <Text style={styles.selectorTitle}>
-                  {viewMode === 'years' ? 'Selecciona el año' : `Selecciona el mes (${tempYear})`}
+                  {viewMode === 'years' ? t('auth:selectYear') : t('auth:selectMonth', { year: tempYear })}
                 </Text>
               </View>
               

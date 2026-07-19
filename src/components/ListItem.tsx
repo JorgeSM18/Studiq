@@ -7,13 +7,14 @@ interface ListItemProps {
   title: string;
   subtitle?: string;
   onPress: () => void;
+  onLongPress?: () => void;
   rightElement?: React.ReactNode;
   icon?: React.ReactNode;
 }
 
-export const ListItem = ({ title, subtitle, onPress, rightElement, icon }: ListItemProps) => {
+export const ListItem = ({ title, subtitle, onPress, onLongPress, rightElement, icon }: ListItemProps) => {
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.6}>
+    <TouchableOpacity style={styles.container} onPress={onPress} onLongPress={onLongPress} activeOpacity={0.6}>
       <View style={styles.leftContent}>
         {icon && <View style={styles.iconContainer}>{icon}</View>}
         <View>

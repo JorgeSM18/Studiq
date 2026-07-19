@@ -1,21 +1,30 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useStore } from '../store/useStore';
 import { Card } from '../components/Card';
 import { Flame, Target, Award } from 'lucide-react-native';
 import { theme } from '../constants/theme';
 
 export const ProgressScreen = () => {
-  const { progress, subjects, activeSubjectId } = useStore();
+  const { t } = useTranslation('progress');
+  const progress = useStore(state => state.progress);
+  const subjects = useStore(state => state.subjects);
+  const activeSubjectId = useStore(state => state.activeSubjectId);
   const activeSubject = subjects.find(s => s.id === activeSubjectId);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>{t('progressTitle')}</Text>
+      </View>
       <ScrollView contentContainerStyle={styles.content}>
         <Card style={styles.mainCard}>
           <Text style={styles.percentageText}>{progress.percentage_completed}%</Text>
-          <Text style={styles.percentageLabel}>Progreso en {activeSubject?.name || 'Asignatura'}</Text>
+          <Text style={styles.percentageLabel}>
+            {t('progressIn', { subject: activeSubject?.name || t('subjectFallback') })}
+          </Text>
           <View style={styles.progressBarContainer}>
             <View style={[styles.progressBar, { width: `${progress.percentage_completed}%` }]} />
           </View>
@@ -25,13 +34,13 @@ export const ProgressScreen = () => {
           <Card style={styles.statCard}>
             <Flame size={24} color={theme.colors.error} />
             <Text style={styles.statValue}>{progress.study_streak}</Text>
-            <Text style={styles.statLabel}>Racha días</Text>
+            <Text style={styles.statLabel}>{t('streakDays')}</Text>
           </Card>
 
           <Card style={styles.statCard}>
             <Award size={24} color={theme.colors.primaryContainer} />
             <Text style={styles.statValue}>{progress.mastered_topics}</Text>
-            <Text style={styles.statLabel}>Temas dominados</Text>
+            <Text style={styles.statLabel}>{t('masteredTopics')}</Text>
           </Card>
         </View>
 
@@ -39,7 +48,7 @@ export const ProgressScreen = () => {
           <View style={styles.infoRow}>
             <Target size={20} color={theme.colors.primary} />
             <Text style={styles.infoText}>
-              Has dominado {progress.mastered_topics} de {progress.total_topics} temas.
+              {t('masteredOf', { mastered: progress.mastered_topics, total: progress.total_topics })}
             </Text>
           </View>
         </Card>
@@ -53,8 +62,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
+  header: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+  },
+  headerTitle: {
+    ...theme.typography.h1,
+    color: theme.colors.onBackground,
+  },
   content: {
     padding: theme.spacing.lg,
+    paddingTop: 0,
   },
   mainCard: {
     alignItems: 'center',
