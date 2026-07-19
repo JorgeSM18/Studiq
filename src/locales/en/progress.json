@@ -1,8 +1,11 @@
 {
+  "progressTab": "Progress",
+  "progressTitle": "Progress",
+  "progressIn": "Progress in {{subject}}",
+  "subjectFallback": "your subject",
   "studyStreak": "Study streak",
-  "completionPercentage": "Completion percentage",
-  "weeklyActivity": "Weekly activity",
-  "totalTopics": "Total topics",
+  "streakDays": "Streak (days)",
   "masteredTopics": "Mastered topics",
+  "masteredOf": "You've mastered {{mastered}} of {{total}} topics.",
   "days": "days"
 }

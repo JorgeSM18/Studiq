@@ -1,8 +1,11 @@
 {
+  "progressTab": "Progreso",
+  "progressTitle": "Progreso",
+  "progressIn": "Progreso en {{subject}}",
+  "subjectFallback": "tu asignatura",
   "studyStreak": "Racha de estudio",
-  "completionPercentage": "Porcentaje completado",
-  "weeklyActivity": "Actividad semanal",
-  "totalTopics": "Temas totales",
+  "streakDays": "Racha (días)",
   "masteredTopics": "Temas dominados",
+  "masteredOf": "Has dominado {{mastered}} de {{total}} temas.",
   "days": "días"
 }
