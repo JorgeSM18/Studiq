@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,31 +9,66 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, Plus, X } from 'lucide-react-native';
 import { theme } from '../constants/theme';
 import { useStore } from '../store/useStore';
 
-// One topic per non-blank line, trimmed. Defined here so the button count and
-// the save use exactly the same parse — no chance of "Add 5" saving 4.
-const parseTitles = (raw: string) =>
-  raw
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0);
+interface Row {
+  id: number;
+  text: string;
+}
 
 export const BulkAddTopicsScreen = () => {
   const navigation = useNavigation<any>();
   const { t } = useTranslation(['topics', 'common']);
   const addTopics = useStore(state => state.addTopics);
 
-  const [text, setText] = useState('');
+  const nextId = useRef(1);
+  const makeRow = (text = ''): Row => ({ id: nextId.current++, text });
+
+  const [rows, setRows] = useState<Row[]>([makeRow()]);
+  // Ids of rows that have lost focus at least once: those pin their cursor to the
+  // start so a long title shows its beginning. A row being typed in is never here,
+  // so editing (and the first mount) stays free.
+  const [rewound, setRewound] = useState<Set<number>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
 
-  const titles = parseTitles(text);
+  const markRewound = (id: number) => setRewound(s => new Set(s).add(id));
+  const clearRewound = (id: number) =>
+    setRewound(s => {
+      if (!s.has(id)) return s;
+      const next = new Set(s);
+      next.delete(id);
+      return next;
+    });
+
+  const titles = rows.map(r => r.text.trim()).filter(Boolean);
+
+  // Typing updates the row; pasting several lines expands into several rows so a
+  // whole syllabus can be dropped in at once, then edited row by row.
+  const onChangeRow = (id: number, value: string) => {
+    if (!value.includes('\n')) {
+      setRows(prev => prev.map(r => (r.id === id ? { ...r, text: value } : r)));
+      return;
+    }
+    const lines = value.split('\n').filter(l => l.trim().length > 0);
+    const expanded = (lines.length ? lines : ['']).map(makeRow);
+    setRows(prev => {
+      const idx = prev.findIndex(r => r.id === id);
+      return [...prev.slice(0, idx), ...expanded, ...prev.slice(idx + 1)];
+    });
+  };
+
+  const removeRow = (id: number) => {
+    setRows(prev => (prev.length === 1 ? [makeRow()] : prev.filter(r => r.id !== id)));
+  };
+
+  const addRow = () => setRows(prev => [...prev, makeRow()]);
 
   const handleSave = async () => {
     if (titles.length === 0) {
@@ -64,20 +99,50 @@ export const BulkAddTopicsScreen = () => {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.body}>
+        <ScrollView
+          contentContainerStyle={styles.body}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <Text style={styles.subtitle}>{t('topics:bulkAddSubtitle')}</Text>
-          <TextInput
-            style={styles.input}
-            multiline
-            autoFocus
-            value={text}
-            onChangeText={setText}
-            placeholder={t('topics:bulkAddPlaceholder')}
-            placeholderTextColor={theme.colors.outlineVariant}
-            textAlignVertical="top"
-          />
+
+          {rows.map((row, index) => (
+            <View key={row.id} style={styles.row}>
+              <Text style={styles.rowNumber}>{index + 1}</Text>
+              <TextInput
+                style={styles.input}
+                value={row.text}
+                onChangeText={value => onChangeRow(row.id, value)}
+                placeholder={t('topics:topicNamePlaceholder')}
+                placeholderTextColor={theme.colors.outlineVariant}
+                autoFocus={index === rows.length - 1}
+                returnKeyType="next"
+                onSubmitEditing={addRow}
+                blurOnSubmit={false}
+                onFocus={() => clearRewound(row.id)}
+                onBlur={() => markRewound(row.id)}
+                // Only pin to the start once the row has actually blurred; while
+                // focused (and on first mount) selection is uncontrolled, so typing
+                // behaves normally.
+                selection={rewound.has(row.id) ? { start: 0, end: 0 } : undefined}
+              />
+              <TouchableOpacity
+                style={styles.removeButton}
+                onPress={() => removeRow(row.id)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <X size={18} color={theme.colors.outline} />
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          <TouchableOpacity style={styles.addRow} onPress={addRow}>
+            <Plus size={18} color={theme.colors.primary} />
+            <Text style={styles.addRowText}>{t('topics:addRow')}</Text>
+          </TouchableOpacity>
+
           <Text style={styles.hint}>{t('topics:bulkAddHint')}</Text>
-        </View>
+        </ScrollView>
 
         <View style={styles.footer}>
           <TouchableOpacity
@@ -124,29 +189,62 @@ const styles = StyleSheet.create({
     color: theme.colors.onBackground,
   },
   body: {
-    flex: 1,
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.lg,
   },
   subtitle: {
     ...theme.typography.bodyLg,
     color: theme.colors.onSurfaceVariant,
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    paddingLeft: theme.spacing.md,
+    paddingRight: theme.spacing.sm,
+    height: 52,
+    marginBottom: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.separator,
+  },
+  rowNumber: {
+    ...theme.typography.bodySm,
+    color: theme.colors.outline,
+    width: 22,
   },
   input: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
     ...theme.typography.bodyLg,
     color: theme.colors.onSurface,
+    height: '100%',
+  },
+  removeButton: {
+    padding: 6,
+  },
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.separator,
+    borderColor: theme.colors.outlineVariant,
+    borderStyle: 'dashed',
+    height: 52,
+    marginTop: theme.spacing.xs,
+  },
+  addRowText: {
+    ...theme.typography.bodyLg,
+    fontWeight: '600',
+    color: theme.colors.primary,
   },
   hint: {
     ...theme.typography.bodySm,
     color: theme.colors.outline,
-    marginTop: theme.spacing.sm,
+    marginTop: theme.spacing.md,
   },
   footer: {
     padding: theme.spacing.lg,

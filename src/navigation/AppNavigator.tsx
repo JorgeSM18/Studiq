@@ -1,4 +1,5 @@
 import React from 'react';
+import { AppState } from 'react-native';
 import { theme } from '../constants/theme';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -22,6 +23,7 @@ import { BulkAddTopicsScreen } from '../screens/BulkAddTopicsScreen';
 import { LibraryScreen } from '../screens/LibraryScreen';
 import { ProgressScreen } from '../screens/ProgressScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { LockScreen } from '../screens/LockScreen';
 
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
@@ -97,15 +99,22 @@ function TabNavigator() {
   );
 }
 
+// Quick app switches (e.g. opening a file to view it) within this window don't
+// re-prompt biometrics; longer absences relock.
+const LOCK_GRACE_MS = 20000;
+
 export function AppNavigator() {
   const session = useStore(state => state.session);
   const isAuthLoading = useStore(state => state.isAuthLoading);
   const initializeAuth = useStore(state => state.initializeAuth);
   const setSession = useStore(state => state.setSession);
+  const biometricEnabled = useStore(state => state.biometricEnabled);
+  const isLocked = useStore(state => state.isLocked);
   const { t } = useTranslation('common');
 
   React.useEffect(() => {
     initializeAuth();
+    useStore.getState().initBiometricLock();
 
     // React to sign-out, token refresh and, crucially, token-refresh failure
     // (fires SIGNED_OUT), so an expired session routes back to the login stack
@@ -113,15 +122,43 @@ export function AppNavigator() {
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
     });
-    return () => data.subscription.unsubscribe();
+
+    // Biometric app-lock: hide content on background, re-prompt on return unless
+    // the app was away only briefly (grace window).
+    let backgroundedAt = 0;
+    const appSub = AppState.addEventListener('change', state => {
+      const store = useStore.getState();
+      if (!store.biometricEnabled) return;
+      if (state === 'background' || state === 'inactive') {
+        // Skip the lock once if the app itself opened a file (viewing it isn't
+        // "leaving" the app); consume the flag so the next background locks.
+        if (store.lockSuppressed) {
+          useStore.setState({ lockSuppressed: false });
+          return;
+        }
+        backgroundedAt = Date.now();
+        store.lockApp();
+      } else if (state === 'active') {
+        useStore.setState({ lockSuppressed: false });
+        if (store.isLocked && Date.now() - backgroundedAt < LOCK_GRACE_MS) store.forceUnlock();
+      }
+    });
+
+    return () => {
+      data.subscription.unsubscribe();
+      appSub.remove();
+    };
   }, [initializeAuth, setSession]);
 
   if (isAuthLoading) {
     return <SplashScreen />;
   }
 
+  const locked = !!session && biometricEnabled && isLocked;
+
   return (
-    <NavigationContainer>
+    <>
+      <NavigationContainer>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
@@ -156,6 +193,8 @@ export function AppNavigator() {
           </>
         )}
       </Stack.Navigator>
-    </NavigationContainer>
+      </NavigationContainer>
+      {locked && <LockScreen />}
+    </>
   );
 }
