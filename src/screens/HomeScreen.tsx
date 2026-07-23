@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, Circle, CalendarClock } from 'lucide-react-native';
+import { CheckCircle2, Circle, CalendarClock, ChevronDown } from 'lucide-react-native';
 import { useStore } from '../store/useStore';
 import { ListItem } from '../components/ListItem';
+import { ExamManagerModal } from '../components/ExamManagerModal';
 import { theme } from '../constants/theme';
 import { Topic } from '../types';
 import { buildDailyPlan, isReview, daysUntil } from '../utils/plan';
@@ -23,6 +24,7 @@ export const HomeScreen = () => {
   const toggleStudiedToday = useStore(state => state.toggleStudiedToday);
   const navigation = useNavigation<any>();
   const { t } = useTranslation(['home', 'topics']);
+  const [examModalOpen, setExamModalOpen] = useState(false);
 
   const activeSubject = subjects.find(s => s.id === activeSubjectId);
   const plan = buildDailyPlan(topics, studiedTodayIds, activeSubject?.exam_date ?? null);
@@ -86,12 +88,17 @@ export const HomeScreen = () => {
           {t('home:greetingNamed', { name: profile?.full_name || t('home:student') })}
         </Text>
         {subtitle && <Text style={styles.summary}>{subtitle}</Text>}
-        {exam && (
-          <View style={styles.examPill}>
-            <CalendarClock size={16} color={theme.colors.primary} />
-            <Text style={styles.examText}>{exam}</Text>
-          </View>
-        )}
+        <TouchableOpacity
+          style={styles.examPill}
+          onPress={() => setExamModalOpen(true)}
+          accessibilityLabel={t('home:manageExams')}
+        >
+          <CalendarClock size={16} color={theme.colors.primary} />
+          <Text style={styles.examText} numberOfLines={1}>
+            {activeSubject ? `${activeSubject.name}${exam ? ` · ${exam}` : ''}` : t('home:manageExams')}
+          </Text>
+          <ChevronDown size={16} color={theme.colors.primary} />
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -109,6 +116,8 @@ export const HomeScreen = () => {
           </View>
         }
       />
+
+      <ExamManagerModal visible={examModalOpen} onClose={() => setExamModalOpen(false)} />
     </SafeAreaView>
   );
 };
@@ -135,6 +144,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     alignSelf: 'flex-start',
+    maxWidth: '100%',
     backgroundColor: theme.colors.surfaceContainerLow,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: 6,
@@ -145,6 +155,7 @@ const styles = StyleSheet.create({
     ...theme.typography.bodySm,
     fontWeight: '600',
     color: theme.colors.primary,
+    flexShrink: 1,
   },
   list: {
     paddingHorizontal: theme.spacing.lg,

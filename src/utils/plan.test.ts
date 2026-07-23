@@ -16,7 +16,6 @@ function topic(over: Partial<Topic>): Topic {
     description: null,
     order_index: n,
     status: 'not_started',
-    pdf_url: null,
     last_review_date: null,
     next_review_date: null,
     review_interval: null,

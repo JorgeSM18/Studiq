@@ -11,24 +11,31 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../constants/theme';
 import { useStore } from '../store/useStore';
 import { supabaseService } from '../services/supabaseService';
-import { LogOut, Globe, Shield, ChevronRight, Pencil } from 'lucide-react-native';
+import { ExamManagerModal } from '../components/ExamManagerModal';
+import { biometricAvailable } from '../lib/biometrics';
+import { LogOut, Globe, Shield, ChevronRight, Pencil, GraduationCap, Fingerprint } from 'lucide-react-native';
 
 export const ProfileScreen = () => {
-  const { t } = useTranslation(['profile', 'common']);
+  const { t } = useTranslation(['profile', 'common', 'home']);
   const language = useStore(state => state.language);
   const setLanguage = useStore(state => state.setLanguage);
   const profile = useStore(state => state.profile);
   const setSession = useStore(state => state.setSession);
   const updateProfileName = useStore(state => state.updateProfileName);
+  const biometricEnabled = useStore(state => state.biometricEnabled);
+  const enableBiometric = useStore(state => state.enableBiometric);
+  const disableBiometric = useStore(state => state.disableBiometric);
 
   const [isEditing, setIsEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
+  const [examModalOpen, setExamModalOpen] = useState(false);
 
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -36,6 +43,21 @@ export const ProfileScreen = () => {
   const [isSavingPassword, setIsSavingPassword] = useState(false);
 
   const handleLanguageToggle = () => setLanguage(language === 'es' ? 'en' : 'es');
+
+  const handleBiometricToggle = async (value: boolean) => {
+    if (!value) {
+      await disableBiometric();
+      return;
+    }
+    if (!(await biometricAvailable())) {
+      Alert.alert(t('profile:biometricLock'), t('profile:biometricUnavailable'));
+      return;
+    }
+    // enableBiometric runs a biometric check; if the user cancels it, the switch
+    // simply stays off (state never flips).
+    const ok = await enableBiometric();
+    if (!ok) Alert.alert(t('common:error'), t('profile:biometricError'));
+  };
 
   const openEditName = () => {
     setNameDraft(profile?.full_name || '');
@@ -139,6 +161,17 @@ export const ProfileScreen = () => {
           </View>
         </TouchableOpacity>
 
+        {/* Exams */}
+        <Text style={styles.sectionTitle}>{t('home:myExams')}</Text>
+        <View style={styles.sectionGroup}>
+          {renderSettingItem(
+            <GraduationCap size={20} color={theme.colors.primary} />,
+            t('home:manageExams'),
+            undefined,
+            () => setExamModalOpen(true)
+          )}
+        </View>
+
         {/* Preferences */}
         <Text style={styles.sectionTitle}>{t('profile:preferences')}</Text>
         <View style={styles.sectionGroup}>
@@ -159,6 +192,19 @@ export const ProfileScreen = () => {
             undefined,
             openChangePassword
           )}
+          <View style={styles.settingItem}>
+            <View style={styles.settingLeft}>
+              <View style={styles.iconContainer}>
+                <Fingerprint size={20} color={theme.colors.primary} />
+              </View>
+              <Text style={styles.settingTitle}>{t('profile:biometricLock')}</Text>
+            </View>
+            <Switch
+              value={biometricEnabled}
+              onValueChange={handleBiometricToggle}
+              trackColor={{ true: theme.colors.primary, false: theme.colors.outlineVariant }}
+            />
+          </View>
         </View>
 
         {/* Logout */}
@@ -246,6 +292,8 @@ export const ProfileScreen = () => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <ExamManagerModal visible={examModalOpen} onClose={() => setExamModalOpen(false)} />
     </SafeAreaView>
   );
 };

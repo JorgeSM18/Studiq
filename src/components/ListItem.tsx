@@ -17,9 +17,9 @@ export const ListItem = ({ title, subtitle, onPress, onLongPress, rightElement, 
     <TouchableOpacity style={styles.container} onPress={onPress} onLongPress={onLongPress} activeOpacity={0.6}>
       <View style={styles.leftContent}>
         {icon && <View style={styles.iconContainer}>{icon}</View>}
-        <View>
-          <Text style={styles.title}>{title}</Text>
-          {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+        <View style={styles.textContent}>
+          <Text style={styles.title} numberOfLines={1}>{title}</Text>
+          {subtitle && <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>}
         </View>
       </View>
       <View style={styles.rightContent}>
@@ -41,6 +41,9 @@ const styles = StyleSheet.create({
   leftContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  textContent: {
     flex: 1,
   },
   iconContainer: {
