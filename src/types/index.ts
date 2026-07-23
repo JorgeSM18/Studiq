@@ -7,13 +7,23 @@ export interface Topic {
   title: string;
   description: string | null;
   order_index: number;
-  pdf_url: string | null;
   status: TopicStatus;
   // Unused until spaced repetition lands; the columns already exist.
   last_review_date: string | null;
   next_review_date: string | null;
   review_interval: number | null;
   ease_factor: number | null;
+  created_at: string;
+}
+
+// A study file. Lives in the library; optionally assigned to one topic.
+export interface Material {
+  id: string;
+  user_id: string;
+  topic_id: string | null;
+  name: string;
+  path: string;
+  mime_type: string | null;
   created_at: string;
 }
 

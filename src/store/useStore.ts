@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import { Topic, UserProgress, Profile, Subject } from '../types';
+import { Topic, UserProgress, Profile, Subject, Material } from '../types';
 import { supabaseService } from '../services/supabaseService';
 import { supabase } from '../lib/supabase';
 import { todayISO, computeStreak } from '../utils/streak';
 import { scheduleReview } from '../utils/plan';
+import { biometricAvailable, authenticate, isLockEnabled, setLockEnabled } from '../lib/biometrics';
 
 import { Session } from '@supabase/supabase-js';
 import i18n from '../lib/i18n';
@@ -14,25 +15,40 @@ interface AppState {
   subjects: Subject[];
   activeSubjectId: string | null;
   topics: Topic[];
+  materials: Material[];
   studiedTodayIds: string[];
   studyDates: string[]; // distinct dates with activity, for the streak (no refetch on toggle)
   progress: UserProgress;
   profile: Profile | null;
   isLoading: boolean;
   isAuthLoading: boolean;
+  biometricEnabled: boolean;
+  isLocked: boolean;
+  lockSuppressed: boolean; // true when the app itself opened a file, so the next background shouldn't lock
 
   // Actions
   setSession: (session: Session | null) => void;
   setLanguage: (lang: string) => void;
   initializeAuth: () => Promise<void>;
+  initBiometricLock: () => Promise<void>;
+  enableBiometric: () => Promise<boolean>;
+  disableBiometric: () => Promise<void>;
+  lockApp: () => void;
+  forceUnlock: () => void;
+  unlockApp: () => Promise<boolean>;
+  suppressLock: () => void;
   fetchInitialData: () => Promise<void>;
   setActiveSubject: (id: string) => Promise<void>;
+  createSubject: (name: string, examDate: string | null) => Promise<void>;
+  updateSubject: (id: string, patch: { name?: string; exam_date?: string | null }) => Promise<void>;
+  deleteSubject: (id: string) => Promise<void>;
   toggleStudiedToday: (topicId: string) => Promise<void>;
   updateTopicStatus: (id: string, status: Topic['status']) => Promise<void>;
   addTopics: (titles: string[]) => Promise<void>;
   deleteTopic: (id: string) => Promise<void>;
-  attachFile: (topicId: string, file: { uri: string; name: string; mimeType?: string }) => Promise<void>;
-  removeFile: (topicId: string) => Promise<void>;
+  uploadMaterial: (topicId: string | null, file: { uri: string; name: string; mimeType?: string }) => Promise<void>;
+  setMaterialTopic: (materialId: string, topicId: string | null) => Promise<void>;
+  deleteMaterial: (materialId: string) => Promise<void>;
   updateProfileName: (fullName: string) => Promise<void>;
 }
 
@@ -53,6 +69,7 @@ export const useStore = create<AppState>((set, get) => ({
   subjects: [],
   activeSubjectId: null,
   topics: [],
+  materials: [],
   studiedTodayIds: [],
   studyDates: [],
   progress: {
@@ -64,6 +81,9 @@ export const useStore = create<AppState>((set, get) => ({
   profile: null,
   isLoading: false,
   isAuthLoading: true,
+  biometricEnabled: false,
+  isLocked: false,
+  lockSuppressed: false,
 
   setSession: (session) => set({ session }),
   setLanguage: (lang) => {
@@ -89,14 +109,54 @@ export const useStore = create<AppState>((set, get) => ({
       } else {
         set({ session });
       }
-
-      // Cargar preferencia biométrica desde el backend o almacenamiento local en el futuro
-      // Por ahora se deja en false
     } catch (error) {
       console.error('Error initializing auth:', error);
     } finally {
       set({ isAuthLoading: false });
     }
+  },
+
+  // Reads the device preference; if the lock is on, start locked so the gate
+  // shows before any content on a cold start.
+  initBiometricLock: async () => {
+    try {
+      const enabled = await isLockEnabled();
+      set({ biometricEnabled: enabled, isLocked: enabled });
+    } catch (error) {
+      console.error('Error reading biometric preference:', error);
+    }
+  },
+
+  // Turning it on requires a successful biometric check first, so a user can't
+  // enable a lock they then can't pass. Returns whether it was enabled.
+  enableBiometric: async () => {
+    if (!(await biometricAvailable())) return false;
+    const ok = await authenticate(i18n.t('profile:unlockPrompt'));
+    if (!ok) return false;
+    await setLockEnabled(true);
+    set({ biometricEnabled: true });
+    return true;
+  },
+
+  disableBiometric: async () => {
+    await setLockEnabled(false);
+    set({ biometricEnabled: false, isLocked: false });
+  },
+
+  lockApp: () => {
+    if (get().biometricEnabled) set({ isLocked: true });
+  },
+
+  forceUnlock: () => set({ isLocked: false }),
+
+  // Called right before the app opens a file in the OS viewer, so the resulting
+  // background→foreground round-trip doesn't demand a re-unlock.
+  suppressLock: () => set({ lockSuppressed: true }),
+
+  unlockApp: async () => {
+    const ok = await authenticate(i18n.t('profile:unlockPrompt'));
+    if (ok) set({ isLocked: false });
+    return ok;
   },
 
   fetchInitialData: async () => {
@@ -123,8 +183,9 @@ export const useStore = create<AppState>((set, get) => ({
       const activeId = get().activeSubjectId || (subjects.length > 0 ? subjects[0].id : null);
 
       const today = todayISO();
-      const [topics, studiedTodayIds, studyDates] = await Promise.all([
+      const [topics, materials, studiedTodayIds, studyDates] = await Promise.all([
         activeId ? supabaseService.getTopics(activeId) : Promise.resolve([]),
+        supabaseService.getMaterials(),
         supabaseService.getStudiedOn(today),
         supabaseService.getStudyDates(),
       ]);
@@ -133,6 +194,7 @@ export const useStore = create<AppState>((set, get) => ({
         subjects,
         activeSubjectId: activeId,
         topics,
+        materials,
         studiedTodayIds,
         studyDates,
         profile,
@@ -159,6 +221,39 @@ export const useStore = create<AppState>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  // Rethrows so the exam form can surface failures.
+  createSubject: async (name, examDate) => {
+    const subject = await supabaseService.createSubject(name, examDate);
+    set({
+      subjects: [subject, ...get().subjects],
+      activeSubjectId: subject.id,
+      topics: [],
+      progress: { ...get().progress, ...topicProgress([]) },
+    });
+  },
+
+  updateSubject: async (id, patch) => {
+    await supabaseService.updateSubject(id, patch);
+    set({ subjects: get().subjects.map(s => (s.id === id ? { ...s, ...patch } : s)) });
+  },
+
+  deleteSubject: async (id) => {
+    await supabaseService.deleteSubject(id);
+    const subjects = get().subjects.filter(s => s.id !== id);
+    const wasActive = get().activeSubjectId === id;
+    set({ subjects });
+
+    if (wasActive) {
+      const nextId = subjects[0]?.id ?? null;
+      set({ activeSubjectId: nextId });
+      if (nextId) await get().setActiveSubject(nextId);
+      else set({ topics: [], progress: { ...get().progress, ...topicProgress([]) } });
+    }
+    // The deleted subject's topics cascaded away; their files are now unassigned.
+    // Refetch materials so the library reflects that.
+    set({ materials: await supabaseService.getMaterials() });
   },
 
   // Toggles "studied today" for a topic and recomputes the streak locally.
@@ -241,10 +336,24 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addTopics: async (titles: string[]) => {
-    const subjectId = get().activeSubjectId;
-    if (!subjectId || titles.length === 0) return;
-    // Let the screen catch and surface failures, so the user knows nothing saved
-    // rather than seeing an empty list and assuming it worked.
+    if (titles.length === 0) return;
+
+    // Self-heal: if signup metadata never produced a subject, the user would
+    // otherwise be stuck unable to add topics. Create one from whatever metadata
+    // exists (falling back to a generic name / no exam date) and make it active.
+    let subjectId = get().activeSubjectId;
+    if (!subjectId) {
+      const meta = get().session?.user.user_metadata;
+      const subject = await supabaseService.createSubject(
+        meta?.study_type || 'General',
+        meta?.exam_date ?? null
+      );
+      set({ subjects: [...get().subjects, subject], activeSubjectId: subject.id });
+      subjectId = subject.id;
+    }
+
+    // Errors propagate so the screen can surface them, rather than the user
+    // seeing an empty list and assuming the save worked.
     const created = await supabaseService.createTopics(subjectId, titles);
     const topics = [...get().topics, ...created];
     set({ topics, progress: { ...get().progress, ...topicProgress(topics) } });
@@ -252,28 +361,32 @@ export const useStore = create<AppState>((set, get) => ({
 
   deleteTopic: async (id: string) => {
     try {
-      const filePath = get().topics.find(t => t.id === id)?.pdf_url;
-      await supabaseService.deleteTopic(id, filePath);
+      await supabaseService.deleteTopic(id);
       const topics = get().topics.filter(t => t.id !== id);
-      set({ topics, progress: { ...get().progress, ...topicProgress(topics) } });
+      // Its files stay in the library (DB sets their topic_id null); mirror that.
+      const materials = get().materials.map(m => (m.topic_id === id ? { ...m, topic_id: null } : m));
+      set({ topics, materials, progress: { ...get().progress, ...topicProgress(topics) } });
     } catch (error) {
       console.error('Error deleting topic:', error);
     }
   },
 
-  // Both rethrow so the detail screen can surface the failure; a silent catch
-  // would leave the user thinking a large upload succeeded when it didn't.
-  attachFile: async (topicId, file) => {
-    const current = get().topics.find(t => t.id === topicId)?.pdf_url;
-    const path = await supabaseService.uploadTopicFile(topicId, file, current);
-    set({ topics: get().topics.map(t => (t.id === topicId ? { ...t, pdf_url: path } : t)) });
+  // Rethrows so the screen can surface the failure rather than the user assuming
+  // a large upload succeeded when it didn't.
+  uploadMaterial: async (topicId, file) => {
+    const material = await supabaseService.uploadMaterial(topicId, file);
+    set({ materials: [material, ...get().materials] });
   },
 
-  removeFile: async (topicId) => {
-    const path = get().topics.find(t => t.id === topicId)?.pdf_url;
-    if (!path) return;
-    await supabaseService.removeTopicFile(topicId, path);
-    set({ topics: get().topics.map(t => (t.id === topicId ? { ...t, pdf_url: null } : t)) });
+  setMaterialTopic: async (materialId, topicId) => {
+    await supabaseService.setMaterialTopic(materialId, topicId);
+    set({ materials: get().materials.map(m => (m.id === materialId ? { ...m, topic_id: topicId } : m)) });
+  },
+
+  deleteMaterial: async (materialId) => {
+    const path = get().materials.find(m => m.id === materialId)?.path;
+    await supabaseService.deleteMaterial(materialId, path ?? '');
+    set({ materials: get().materials.filter(m => m.id !== materialId) });
   },
 
   updateProfileName: async (fullName) => {
