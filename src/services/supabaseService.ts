@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { File } from 'expo-file-system';
-import { Topic, Note, Subject, Profile } from '../types';
+import { Topic, Note, Subject, Profile, Material } from '../types';
 
 // Reads the user id from the locally-stored session instead of getUser(), which
 // hits the network to re-validate on every call. RLS enforces isolation
@@ -123,7 +123,7 @@ export const supabaseService = {
     return data || [];
   },
 
-  async createSubject(name: string, examDate: string, userId?: string): Promise<Subject> {
+  async createSubject(name: string, examDate: string | null, userId?: string): Promise<Subject> {
     const id = userId ?? (await currentUserId());
     if (!id) throw new Error('User not authenticated');
 
@@ -139,6 +139,21 @@ export const supabaseService = {
     
     if (error) throw error;
     return data;
+  },
+
+  async updateSubject(
+    id: string,
+    patch: Partial<Pick<Subject, 'name' | 'exam_date'>>
+  ): Promise<void> {
+    const { error } = await supabase.from('subjects').update(patch).eq('id', id);
+    if (error) throw error;
+  },
+
+  // Deleting a subject cascades its topics (and their notes/study_log); the
+  // topics' materials fall back to the library (topic_id set null by FK).
+  async deleteSubject(id: string): Promise<void> {
+    const { error } = await supabase.from('subjects').delete().eq('id', id);
+    if (error) throw error;
   },
 
   // Crea el primer subject del usuario usando los datos guardados como metadata.
@@ -158,11 +173,13 @@ export const supabaseService = {
 
     if (existingSubjects && existingSubjects.length > 0) return; // Ya tiene subjects
 
-    // Lee los datos guardados en metadata durante el signUp
+    // Lee los datos guardados en metadata durante el signUp. Basta con el nombre
+    // (study_type); la fecha de examen es opcional (el plan usa un ritmo por
+    // defecto sin ella), así que no bloqueamos la creación por que falte.
     const studyType = user.user_metadata?.study_type;
-    const examDate = user.user_metadata?.exam_date;
+    const examDate = user.user_metadata?.exam_date ?? null;
 
-    if (studyType && examDate) {
+    if (studyType) {
       await this.createSubject(studyType, examDate);
     }
   },
@@ -205,13 +222,9 @@ export const supabaseService = {
     return data || [];
   },
 
-  // filePath is passed in because the caller (the store) already holds the
-  // topic; storage objects are not cascade-deleted by the row's FK, so an
-  // attached file would otherwise be orphaned in the bucket forever.
-  async deleteTopic(id: string, filePath?: string | null): Promise<void> {
-    if (filePath) {
-      await supabase.storage.from('materials').remove([filePath]);
-    }
+  // Materials keep their own lifecycle: deleting a topic sets their topic_id to
+  // null (they stay in the library), so nothing to clean up in storage here.
+  async deleteTopic(id: string): Promise<void> {
     const { error } = await supabase.from('topics').delete().eq('id', id);
     if (error) throw error;
   },
@@ -314,55 +327,75 @@ export const supabaseService = {
     if (error) throw error;
   },
 
-  // --- Storage (study materials) ---
+  // --- Materials (study files: library + per-topic attachments) ---
 
-  // Uploads a picked document and points the topic at it. The path is
-  // {uid}/{topicId}/{filename}: the storage RLS policy requires the first path
-  // segment to equal auth.uid(), and scoping by topic keeps replacements tidy.
-  async uploadTopicFile(
-    topicId: string,
-    file: { uri: string; name: string; mimeType?: string },
-    previousPath?: string | null
-  ): Promise<string> {
+  async getMaterials(): Promise<Material[]> {
+    const userId = await currentUserId();
+    if (!userId) return [];
+
+    const { data, error } = await supabase
+      .from('materials')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Uploads a picked document as a new material, optionally assigned to a topic.
+  // The row is created first to get an id, then the file lands at
+  // {uid}/{materialId}/{filename} — the {uid}/ prefix is what storage RLS checks,
+  // and the id keeps every file at its own key regardless of topic assignment.
+  async uploadMaterial(
+    topicId: string | null,
+    file: { uri: string; name: string; mimeType?: string }
+  ): Promise<Material> {
     const userId = await currentUserId();
     if (!userId) throw new Error('User not authenticated');
 
-    const bytes = await new File(file.uri).arrayBuffer();
-    // Strip path separators/control chars from the filename so it stays a single
-    // storage-key segment (the {uid}/ prefix — enforced by storage RLS — is what
-    // isolates users; this is just key hygiene, not a security boundary).
-    const safeName = file.name.replace(/[/\\]/g, '_');
-    const path = `${userId}/${topicId}/${safeName}`;
-
-    const { error: uploadError } = await supabase.storage
+    const { data: row, error: insertError } = await supabase
       .from('materials')
-      .upload(path, bytes, {
-        contentType: file.mimeType || 'application/octet-stream',
-        upsert: true,
-      });
-    if (uploadError) throw uploadError;
+      .insert({ user_id: userId, topic_id: topicId, name: file.name, path: '', mime_type: file.mimeType ?? null })
+      .select()
+      .single();
+    if (insertError) throw insertError;
 
-    // Remove the old file if the replacement lives at a different path (e.g. a
-    // different filename); upsert already overwrote it when the path matches.
-    if (previousPath && previousPath !== path) {
-      await supabase.storage.from('materials').remove([previousPath]);
+    try {
+      const bytes = await new File(file.uri).arrayBuffer();
+      const safeName = file.name.replace(/[/\\]/g, '_');
+      const path = `${userId}/${row.id}/${safeName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('materials')
+        .upload(path, bytes, { contentType: file.mimeType || 'application/octet-stream', upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: updated, error: updateError } = await supabase
+        .from('materials')
+        .update({ path })
+        .eq('id', row.id)
+        .select()
+        .single();
+      if (updateError) throw updateError;
+      return updated;
+    } catch (err) {
+      // The row exists but the file didn't land — drop the orphan so the library
+      // never shows a material that can't be opened.
+      await supabase.from('materials').delete().eq('id', row.id);
+      throw err;
     }
-
-    const { error: updateError } = await supabase
-      .from('topics')
-      .update({ pdf_url: path })
-      .eq('id', topicId);
-    if (updateError) throw updateError;
-
-    return path;
   },
 
-  async removeTopicFile(topicId: string, path: string): Promise<void> {
-    await supabase.storage.from('materials').remove([path]);
-    const { error } = await supabase
-      .from('topics')
-      .update({ pdf_url: null })
-      .eq('id', topicId);
+  // Assigns an existing material to a topic (or unassigns it back to the library).
+  async setMaterialTopic(materialId: string, topicId: string | null): Promise<void> {
+    const { error } = await supabase.from('materials').update({ topic_id: topicId }).eq('id', materialId);
+    if (error) throw error;
+  },
+
+  async deleteMaterial(materialId: string, path: string): Promise<void> {
+    if (path) await supabase.storage.from('materials').remove([path]);
+    const { error } = await supabase.from('materials').delete().eq('id', materialId);
     if (error) throw error;
   },
 
