@@ -14,5 +14,19 @@
   "daysToExam_one": "{{count}} day to your exam",
   "daysToExam_other": "{{count}} days to your exam",
   "examToday": "Your exam is today",
-  "examPast": "Exam date has passed"
+  "examPast": "Exam date has passed",
+  "myExams": "My exams",
+  "manageExams": "Manage exams",
+  "newExam": "New exam",
+  "examName": "Exam name",
+  "examNamePlaceholder": "e.g. Bar Exam",
+  "examDateField": "Exam date",
+  "noDate": "No date",
+  "chooseDate": "Choose date",
+  "activeLabel": "Active",
+  "examNameRequired": "Enter a name for the exam.",
+  "deleteExam": "Delete exam",
+  "deleteExamConfirm": "Delete \"{{name}}\" and all its topics? This can't be undone.",
+  "noExams": "You don't have any exams yet.",
+  "createExamError": "Couldn't save the exam. Please try again."
 }
