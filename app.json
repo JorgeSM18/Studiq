@@ -29,6 +29,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Studiq usa Face ID para desbloquear la aplicación."
+        }
+      ]
+    ]
   }
 }
