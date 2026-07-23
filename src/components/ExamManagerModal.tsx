@@ -9,6 +9,8 @@ import {
   FlatList,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { X, Plus, Pencil, Trash2, Check, Calendar as CalendarIcon, ChevronLeft } from 'lucide-react-native';
@@ -125,8 +127,12 @@ export const ExamManagerModal = ({ visible, onClose }: Props) => {
   };
 
   return (
+    <>
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         <View style={styles.sheet}>
           {mode.type === 'list' ? (
             <>
@@ -186,15 +192,18 @@ export const ExamManagerModal = ({ visible, onClose }: Props) => {
             </>
           )}
         </View>
-      </View>
-
-      <DatePickerModal
-        visible={datePickerOpen}
-        onClose={() => setDatePickerOpen(false)}
-        selectedDate={date || ''}
-        onSelect={setDate}
-      />
+      </KeyboardAvoidingView>
     </Modal>
+
+    {/* Sibling, not nested inside the Modal above: nesting Modals fails to
+        present the inner one on iOS. */}
+    <DatePickerModal
+      visible={datePickerOpen}
+      onClose={() => setDatePickerOpen(false)}
+      selectedDate={date || ''}
+      onSelect={setDate}
+    />
+    </>
   );
 };
 

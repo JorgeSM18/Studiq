@@ -32,6 +32,7 @@ export const ProfileScreen = () => {
   const biometricEnabled = useStore(state => state.biometricEnabled);
   const enableBiometric = useStore(state => state.enableBiometric);
   const disableBiometric = useStore(state => state.disableBiometric);
+  const deleteAccount = useStore(state => state.deleteAccount);
 
   const [isEditing, setIsEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
@@ -114,6 +115,23 @@ export const ProfileScreen = () => {
             setSession(null);
           } catch {
             Alert.alert(t('common:error'), t('profile:logoutError'));
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(t('profile:deleteAccountConfirmTitle'), t('profile:deleteAccountConfirmMessage'), [
+      { text: t('common:cancel'), style: 'cancel' },
+      {
+        text: t('profile:deleteAccount'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteAccount();
+          } catch {
+            Alert.alert(t('common:error'), t('profile:deleteAccountError'));
           }
         },
       },
@@ -211,6 +229,11 @@ export const ProfileScreen = () => {
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <LogOut size={20} color={theme.colors.error} style={styles.logoutIcon} />
           <Text style={styles.logoutText}>{t('profile:logout')}</Text>
+        </TouchableOpacity>
+
+        {/* Account deletion — required by the app stores */}
+        <TouchableOpacity style={styles.deleteAccountButton} onPress={handleDeleteAccount}>
+          <Text style={styles.deleteAccountText}>{t('profile:deleteAccount')}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -417,6 +440,16 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyLg,
     fontWeight: '600',
     color: theme.colors.error,
+  },
+  deleteAccountButton: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.lg,
+    marginTop: theme.spacing.xs,
+  },
+  deleteAccountText: {
+    ...theme.typography.bodySm,
+    color: theme.colors.error,
+    textDecorationLine: 'underline',
   },
   modalOverlay: {
     flex: 1,

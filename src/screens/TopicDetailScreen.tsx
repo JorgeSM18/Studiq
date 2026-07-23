@@ -163,10 +163,18 @@ export const TopicDetailScreen = () => {
             <View key={material.id} style={styles.materialRow}>
               <FileText size={20} color={theme.colors.primary} />
               <Text style={styles.materialName} numberOfLines={1}>{material.name}</Text>
-              <TouchableOpacity onPress={() => openFile(material)} style={styles.materialAction}>
+              <TouchableOpacity
+                onPress={() => openFile(material)}
+                style={styles.materialAction}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <ExternalLink size={18} color={theme.colors.primary} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => unlink(material)} style={styles.materialAction}>
+              <TouchableOpacity
+                onPress={() => unlink(material)}
+                style={styles.materialAction}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <X size={18} color={theme.colors.outline} />
               </TouchableOpacity>
             </View>
