@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { todayISO, computeStreak } from '../utils/streak';
 import { scheduleReview } from '../utils/plan';
 import { biometricAvailable, authenticate, isLockEnabled, setLockEnabled } from '../lib/biometrics';
+import { prefs } from '../lib/prefs';
 
 import { Session } from '@supabase/supabase-js';
 import i18n from '../lib/i18n';
@@ -30,6 +31,7 @@ interface AppState {
   setSession: (session: Session | null) => void;
   setLanguage: (lang: string) => void;
   initializeAuth: () => Promise<void>;
+  loadPrefs: () => Promise<void>;
   initBiometricLock: () => Promise<void>;
   enableBiometric: () => Promise<boolean>;
   disableBiometric: () => Promise<void>;
@@ -50,6 +52,7 @@ interface AppState {
   setMaterialTopic: (materialId: string, topicId: string | null) => Promise<void>;
   deleteMaterial: (materialId: string) => Promise<void>;
   updateProfileName: (fullName: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 // The mastered count and percentage are derived from topics in several actions;
@@ -89,6 +92,7 @@ export const useStore = create<AppState>((set, get) => ({
   setLanguage: (lang) => {
     i18n.changeLanguage(lang);
     set({ language: lang });
+    prefs.setLanguage(lang).catch(() => {}); // persist so it survives restart
   },
 
   initializeAuth: async () => {
@@ -113,6 +117,20 @@ export const useStore = create<AppState>((set, get) => ({
       console.error('Error initializing auth:', error);
     } finally {
       set({ isAuthLoading: false });
+    }
+  },
+
+  // Restores device-local UI prefs (language, last active exam) on launch.
+  loadPrefs: async () => {
+    try {
+      const [lang, activeSubjectId] = await Promise.all([prefs.getLanguage(), prefs.getActiveSubject()]);
+      if (lang && lang !== get().language) {
+        i18n.changeLanguage(lang);
+        set({ language: lang });
+      }
+      if (activeSubjectId) set({ activeSubjectId });
+    } catch (error) {
+      console.error('Error loading prefs:', error);
     }
   },
 
@@ -162,7 +180,10 @@ export const useStore = create<AppState>((set, get) => ({
   fetchInitialData: async () => {
     set({ isLoading: true });
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // getSession (local) rather than getUser (network round-trip); RLS enforces
+      // access server-side, so we only need the id here.
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) {
         set({ isLoading: false });
         return;
@@ -179,8 +200,12 @@ export const useStore = create<AppState>((set, get) => ({
         supabaseService.getProfile(user.id)
       ]);
 
-      // Seleccionar la primera asignatura por defecto si no hay una activa
-      const activeId = get().activeSubjectId || (subjects.length > 0 ? subjects[0].id : null);
+      // Keep the persisted/active subject only if it still exists; otherwise fall
+      // back to the most recent. Avoids querying topics for a deleted subject.
+      const stored = get().activeSubjectId;
+      const activeId =
+        (stored && subjects.some(s => s.id === stored) ? stored : null) ??
+        (subjects.length > 0 ? subjects[0].id : null);
 
       const today = todayISO();
       const [topics, materials, studiedTodayIds, studyDates] = await Promise.all([
@@ -213,6 +238,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   setActiveSubject: async (id: string) => {
     set({ activeSubjectId: id, isLoading: true });
+    prefs.setActiveSubject(id).catch(() => {}); // remember across restarts
     try {
       const topics = await supabaseService.getTopics(id);
       set({ topics, progress: { ...get().progress, ...topicProgress(topics) } });
@@ -394,5 +420,22 @@ export const useStore = create<AppState>((set, get) => ({
     set(state => ({
       profile: state.profile ? { ...state.profile, full_name: fullName } : state.profile,
     }));
+  },
+
+  // Rethrows so Profile can surface a failure. On success, wipe the in-memory
+  // account data so nothing stale flashes as we route back to the auth flow.
+  deleteAccount: async () => {
+    await supabaseService.deleteAccount();
+    set({
+      session: null,
+      subjects: [],
+      activeSubjectId: null,
+      topics: [],
+      materials: [],
+      studiedTodayIds: [],
+      studyDates: [],
+      profile: null,
+      progress: { percentage_completed: 0, study_streak: 0, total_topics: 0, mastered_topics: 0 },
+    });
   }
 }));
