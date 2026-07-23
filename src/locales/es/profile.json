@@ -21,5 +21,9 @@
   "logout": "Cerrar sesión",
   "logoutConfirmTitle": "Cerrar sesión",
   "logoutConfirmMessage": "¿Estás seguro de que deseas cerrar sesión?",
-  "logoutError": "Error al cerrar sesión"
+  "logoutError": "Error al cerrar sesión",
+  "deleteAccount": "Eliminar cuenta",
+  "deleteAccountConfirmTitle": "Eliminar cuenta",
+  "deleteAccountConfirmMessage": "Esto borrará tu cuenta y todos tus datos (exámenes, temas, notas y archivos) de forma permanente. Esta acción no se puede deshacer.",
+  "deleteAccountError": "No se pudo eliminar la cuenta. Inténtalo de nuevo."
 }

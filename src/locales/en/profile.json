@@ -21,5 +21,9 @@
   "logout": "Log out",
   "logoutConfirmTitle": "Log out",
   "logoutConfirmMessage": "Are you sure you want to log out?",
-  "logoutError": "Error logging out"
+  "logoutError": "Error logging out",
+  "deleteAccount": "Delete account",
+  "deleteAccountConfirmTitle": "Delete account",
+  "deleteAccountConfirmMessage": "This permanently deletes your account and all your data (exams, topics, notes and files). This action cannot be undone.",
+  "deleteAccountError": "Couldn't delete your account. Please try again."
 }

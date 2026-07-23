@@ -114,6 +114,7 @@ export function AppNavigator() {
 
   React.useEffect(() => {
     initializeAuth();
+    useStore.getState().loadPrefs();
     useStore.getState().initBiometricLock();
 
     // React to sign-out, token refresh and, crucially, token-refresh failure
