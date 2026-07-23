@@ -59,6 +59,14 @@ export const supabaseService = {
     if (error) throw error;
   },
 
+  // Permanently deletes the signed-in user and all their data (via the
+  // delete_current_user RPC + FK cascade), then clears the local session.
+  async deleteAccount() {
+    const { error } = await supabase.rpc('delete_current_user');
+    if (error) throw error;
+    await supabase.auth.signOut();
+  },
+
   async updateProfile(fullName: string, userId?: string) {
     const id = userId ?? (await currentUserId());
     if (!id) throw new Error('User not authenticated');
