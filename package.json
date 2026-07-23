@@ -16,6 +16,7 @@
     "expo": "~54.0.34",
     "expo-document-picker": "~14.0.8",
     "expo-file-system": "~19.0.23",
+    "expo-local-authentication": "~17.0.8",
     "expo-localization": "~17.0.8",
     "expo-secure-store": "~15.0.8",
     "expo-status-bar": "~3.0.9",
