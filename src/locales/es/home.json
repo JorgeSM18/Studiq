@@ -14,5 +14,19 @@
   "daysToExam_one": "{{count}} día para tu examen",
   "daysToExam_other": "{{count}} días para tu examen",
   "examToday": "Tu examen es hoy",
-  "examPast": "La fecha del examen ya pasó"
+  "examPast": "La fecha del examen ya pasó",
+  "myExams": "Mis exámenes",
+  "manageExams": "Gestionar exámenes",
+  "newExam": "Nuevo examen",
+  "examName": "Nombre del examen",
+  "examNamePlaceholder": "ej. Oposición Hacienda",
+  "examDateField": "Fecha del examen",
+  "noDate": "Sin fecha",
+  "chooseDate": "Elegir fecha",
+  "activeLabel": "Activo",
+  "examNameRequired": "Escribe un nombre para el examen.",
+  "deleteExam": "Eliminar examen",
+  "deleteExamConfirm": "¿Eliminar «{{name}}» y todos sus temas? No se puede deshacer.",
+  "noExams": "Aún no tienes exámenes.",
+  "createExamError": "No se pudo guardar el examen. Inténtalo de nuevo."
 }
