@@ -7,10 +7,6 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://zoelnjexiakjtdcunurx.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "***REMOVED***"
-      },
       "channel": "development"
     },
     "preview": {
@@ -19,20 +15,12 @@
       "android": {
         "buildType": "apk"
       },
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://zoelnjexiakjtdcunurx.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "***REMOVED***"
-      },
       "channel": "preview"
     },
     "production": {
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
-      },
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://zoelnjexiakjtdcunurx.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "***REMOVED***"
       },
       "channel": "production"
     }
