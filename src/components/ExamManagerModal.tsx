@@ -116,10 +116,20 @@ export const ExamManagerModal = ({ visible, onClose }: Props) => {
           </View>
           <Text style={styles.examCountdown}>{countdown(item.exam_date)}</Text>
         </View>
-        <TouchableOpacity style={styles.iconBtn} onPress={() => openForm(item)}>
+        <TouchableOpacity
+          style={styles.iconBtn}
+          onPress={() => openForm(item)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel={t('home:editExam')}
+        >
           <Pencil size={18} color={theme.colors.onSurfaceVariant} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.iconBtn} onPress={() => confirmDelete(item)}>
+        <TouchableOpacity
+          style={styles.iconBtn}
+          onPress={() => confirmDelete(item)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel={t('home:deleteExam')}
+        >
           <Trash2 size={18} color={theme.colors.error} />
         </TouchableOpacity>
       </TouchableOpacity>

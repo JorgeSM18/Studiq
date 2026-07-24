@@ -25,6 +25,7 @@
   "chooseDate": "Elegir fecha",
   "activeLabel": "Activo",
   "examNameRequired": "Escribe un nombre para el examen.",
+  "editExam": "Editar examen",
   "deleteExam": "Eliminar examen",
   "deleteExamConfirm": "¿Eliminar «{{name}}» y todos sus temas? No se puede deshacer.",
   "noExams": "Aún no tienes exámenes.",

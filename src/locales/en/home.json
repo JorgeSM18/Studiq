@@ -25,6 +25,7 @@
   "chooseDate": "Choose date",
   "activeLabel": "Active",
   "examNameRequired": "Enter a name for the exam.",
+  "editExam": "Edit exam",
   "deleteExam": "Delete exam",
   "deleteExamConfirm": "Delete \"{{name}}\" and all its topics? This can't be undone.",
   "noExams": "You don't have any exams yet.",
