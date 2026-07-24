@@ -9,5 +9,7 @@
   "ok": "OK",
   "back": "Atrás",
   "done": "Hecho",
-  "tagline": "Céntrate en lo que importa"
+  "tagline": "Céntrate en lo que importa",
+  "somethingWrong": "Algo ha ido mal",
+  "somethingWrongDesc": "Se ha producido un error inesperado. Cierra la aplicación y vuelve a abrirla."
 }
