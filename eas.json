@@ -10,7 +10,8 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://zoelnjexiakjtdcunurx.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "***REMOVED***"
-      }
+      },
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
@@ -21,7 +22,8 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://zoelnjexiakjtdcunurx.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "***REMOVED***"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "autoIncrement": true,
@@ -31,7 +33,8 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://zoelnjexiakjtdcunurx.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "***REMOVED***"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {
