@@ -25,7 +25,11 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.studiq.app",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "plugins": [
       [
@@ -34,6 +38,12 @@
           "faceIDPermission": "Studiq usa Face ID para desbloquear la aplicación."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ea3db1db-d7cb-40ed-aa54-70ecba7a0364"
+      }
+    },
+    "owner": "jorgesm18"
   }
 }
