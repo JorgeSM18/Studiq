@@ -129,16 +129,31 @@ export const LibraryScreen = () => {
       {selecting ? (
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={clearSelection} style={styles.iconButton}>
+            <TouchableOpacity
+              onPress={clearSelection}
+              style={styles.iconButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel={t('common:cancel')}
+            >
               <X size={22} color={theme.colors.onSurface} />
             </TouchableOpacity>
             <Text style={styles.selectionCount}>{t('topics:selectedCount', { count: selected.size })}</Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => setPickerOpen(true)} style={styles.iconButton}>
+            <TouchableOpacity
+              onPress={() => setPickerOpen(true)}
+              style={styles.iconButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel={t('topics:assignToTopic')}
+            >
               <Tag size={22} color={theme.colors.primary} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={deleteSelected} style={styles.iconButton}>
+            <TouchableOpacity
+              onPress={deleteSelected}
+              style={styles.iconButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel={t('topics:deleteFile')}
+            >
               <Trash2 size={22} color={theme.colors.error} />
             </TouchableOpacity>
           </View>
