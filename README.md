@@ -10,14 +10,13 @@ Studiq answers one question every morning: **what should I study today?** It der
 
 ## Screenshots
 
-<!-- TODO: replace placeholders with real captures -->
-| Today | Topics | Topic detail |
+| Today | Topics | Library |
 |:---:|:---:|:---:|
-| _screenshot pending_ | _screenshot pending_ | _screenshot pending_ |
+| ![Today](docs/screenshots/01-hoy.png) | ![Topics](docs/screenshots/02-temas.png) | ![Library](docs/screenshots/03-biblioteca.png) |
 
-| Library | Progress | Profile |
-|:---:|:---:|:---:|
-| _screenshot pending_ | _screenshot pending_ | _screenshot pending_ |
+| Progress | Profile |
+|:---:|:---:|
+| ![Progress](docs/screenshots/04-progreso.png) | ![Profile](docs/screenshots/05-perfil.png) |
 
 ---
 
