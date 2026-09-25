@@ -185,6 +185,7 @@ Applied in order via the Supabase SQL editor.
 | `0003_drop_unused_optional.sql` | Drops `study_plan`, `study_sessions`, `profiles.biometric_enabled`. **Destructive.** | Optional |
 | `0004_materials.sql` | Creates `materials` + RLS + indexes, backfills from `topics.pdf_url`. | **Yes** |
 | `0005_delete_account.sql` | Creates the `delete_current_user()` RPC. | **Yes** (store requirement) |
+| `0006_security_advisor_hardening.sql` | Pins `search_path` on `update_modified_column`; revokes direct `EXECUTE` on the trigger-only `handle_new_user()`. Closes the two actionable findings from Supabase's Security Advisor. | Recommended |
 
 ### Fresh project
 
